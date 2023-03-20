@@ -89,7 +89,7 @@ def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
 
 if __name__ == "__main__":
 
-    config = load_config("configs\configs.yml")
+    config = load_config()
 
     dataroot = os.path.join(os.getcwd(), config.nuscenes_dir)
     nuscenes = NuScenes(config.nuscenes_version, dataroot)
