@@ -1,24 +1,28 @@
 import os
+import numpy as np
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms.functional import to_tensor
 
-from PIL import Image
-import numpy as np
 from nuscenes import NuScenes
-
 import nuscenes_utilities as nusc_utils
-from torch.utils.data import DataLoader
 
 
 class NuSceneDataset(Dataset):
-    def __init__(self, data_root, label_dir, image_size=(200, 196), transform=None):
-        self.nuscenes = NuScenes("v1.0-mini", data_root)
+    def __init__(
+        self,
+        nuscence_dir: str,
+        nuscence_version: str,
+        label_dir: str,
+        image_size=(200, 196),
+        transform=None,
+    ):
+        self.nuscenes = NuScenes(nuscence_version, nuscence_dir)
         self.label_dir = label_dir
         self.image_size = image_size
         self.get_tokens()
 
     def get_tokens(self, scene_names=None):
-
         self.tokens = list()
 
         # Iterate over scenes
@@ -69,31 +73,3 @@ class NuSceneDataset(Dataset):
         labels, mask = labels[:-1], ~labels[-1]
 
         return labels, mask
-
-
-if __name__ == "__main__":
-
-    dataset = NuSceneDataset(data_root="data", label_dir="labels")
-
-    print(dataset.get_tokens())
-    image = dataset.load_image(dataset.tokens[0])
-    print(image.shape)
-    labels, mask = dataset.load_labels(dataset.tokens[0])
-    print(labels.shape)
-    print(mask.shape)
-
-    train_loader = DataLoader(dataset,
-                            batch_size=2,
-                            num_workers=2,
-                            pin_memory=True,
-                            shuffle=True)
-    # print(len(dataset))
-    # data_loader = DataLoader(dataset, batch_size=2)
-    # image, labels, mask = next(iter(data_loader))
-    # print(image.shape)
-    # print(labels.shape)
-    # print(mas.shape)
-    # sample = [ x[0] for x in iter(data_loader).next() ]
-
-    image, labels, mask = dataset[0]
-    print(labels)
