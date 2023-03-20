@@ -1,6 +1,7 @@
-nuscenes_dataroot: nuscenes
+nuscenes_dir: nuscenes
 nuscenes_version: v1.0-mini
-label_root: labels
+label_dir: labels
+log_dir: logs
 
 # Top-left and bottom right coordinates of map region, in meters
 map_extents: [-25.0, 1.0, 25.0, 50.0]

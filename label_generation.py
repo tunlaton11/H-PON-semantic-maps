@@ -81,7 +81,7 @@ def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
 
     # Save outputs to disk
     output_path = os.path.join(
-        os.path.expandvars(config.label_root),
+        os.path.expandvars(config.label_dir),
         sample_data["token"] + ".png",
     )
     Image.fromarray(labels.astype(np.int32), mode="I").save(output_path)
@@ -91,13 +91,13 @@ if __name__ == "__main__":
 
     config = load_config("configs\configs.yml")
 
-    dataroot = os.path.join(os.getcwd(), config.nuscenes_dataroot)
+    dataroot = os.path.join(os.getcwd(), config.nuscenes_dir)
     nuscenes = NuScenes(config.nuscenes_version, dataroot)
 
     map_data = nusc_utils.load_map_data(dataroot)
 
-    output_root = os.path.expandvars(config.label_root)
-    os.makedirs(output_root, exist_ok=True)
+    label_dir = os.path.expandvars(config.label_dir)
+    os.makedirs(label_dir, exist_ok=True)
 
     for scene in tqdm(nuscenes.scene[:1]):
         process_scene(nuscenes, map_data, scene, config)
