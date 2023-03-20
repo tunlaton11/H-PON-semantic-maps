@@ -1,3 +1,4 @@
+from configs.config_utilities import load_config
 from dataset import NuSceneDataset
 from model import UNET
 
@@ -13,17 +14,22 @@ import re
 
 
 def main():
-    train_dataset = NuSceneDataset(data_root="data", label_dir="labels")
+    config = load_config()
+    train_dataset = NuSceneDataset(
+        data_root=config.nuscenes_dir,
+        label_dir=config.label_dir,
+    )
 
-    train_loader = DataLoader(train_dataset,
-                            batch_size=2,
-                            num_workers=2,
-                            pin_memory=True,
-                            shuffle=True)
-    
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=2,
+        num_workers=2,
+        pin_memory=True,
+        shuffle=True,
+    )
 
     network = UNET(in_channels=3, out_channels=14)
-    
+
     this_device = platform.platform()
     # if torch.cuda.is_available():
     #     device = "cuda:0"
@@ -34,22 +40,21 @@ def main():
     #     device = "cpu"
     device = "cpu"
 
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss().to(device)
     # loss_fn = nn.BCELoss()
     optimizer = optim.Adam(network.parameters(), lr=0.001)
 
     network.to(device)
 
-
     for epoch in range(20):
-        print(f'Training epoch {epoch+1}...')
+        print(f"Training epoch {epoch+1}...")
         for batch_idx, batch in enumerate(train_loader):
-            
+
             image, labels, mask = batch
             image = image.to(device)
             labels = labels.to(device).type(torch.FloatTensor)
             mask = mask.to(device)
-            
+
             prediction = network(image).to(device)
 
             # print('pred', prediction.shape, type(prediction))
@@ -64,8 +69,7 @@ def main():
 
             # 4.4 update weights
             optimizer.step()
-            print('loss ', loss.item())
-
+            print("loss ", loss.item())
 
 
 if __name__ == "__main__":
