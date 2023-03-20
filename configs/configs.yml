@@ -1,0 +1,8 @@
+nuscenes_dataroot: nuscenes
+nuscenes_version: v1.0-mini
+label_root: labels
+
+# Top-left and bottom right coordinates of map region, in meters
+map_extents: [-25.0, 1.0, 25.0, 50.0]
+# Spacing between adjacent grid cells in the map, in meters
+map_resolution: 0.25
