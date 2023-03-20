@@ -12,11 +12,15 @@ from torch.utils.data import DataLoader
 import platform
 import re
 
+import time
+from logger import TensorboardLogger
+
 
 def main():
     config = load_config()
     train_dataset = NuSceneDataset(
-        data_root=config.nuscenes_dir,
+        nuscenes_dir=config.nuscenes_dir,
+        nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
     )
 
@@ -31,14 +35,21 @@ def main():
     network = UNET(in_channels=3, out_channels=14)
 
     this_device = platform.platform()
-    # if torch.cuda.is_available():
-    #     device = "cuda:0"
-    # elif re.search("arm64", this_device):
-    #     # use Apple GPU
-    #     device = "mps"
-    # else:
-    #     device = "cpu"
-    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif re.search("arm64", this_device):
+        # use Apple GPU
+        device = "mps"
+    else:
+        device = "cpu"
+
+    current_time = time.time()
+    logger = TensorboardLogger(
+        device,
+        log_dir=f"{config.log_dir}/{current_time}",
+    )
+
+    print(f"----- Training on {device} -----")
 
     loss_fn = nn.CrossEntropyLoss().to(device)
     # loss_fn = nn.BCELoss()
@@ -69,7 +80,10 @@ def main():
 
             # 4.4 update weights
             optimizer.step()
-            print("loss ", loss.item())
+
+            logger.log_step(loss=loss.item())
+
+        logger.log_epoch()
 
 
 if __name__ == "__main__":
