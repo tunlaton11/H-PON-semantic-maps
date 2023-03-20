@@ -11,13 +11,13 @@ import nuscenes_utilities as nusc_utils
 class NuSceneDataset(Dataset):
     def __init__(
         self,
-        nuscence_dir: str,
-        nuscence_version: str,
+        nuscenes_dir: str,
+        nuscenes_version: str,
         label_dir: str,
         image_size=(200, 196),
         transform=None,
     ):
-        self.nuscenes = NuScenes(nuscence_version, nuscence_dir)
+        self.nuscenes = NuScenes(nuscenes_version, nuscenes_dir)
         self.label_dir = label_dir
         self.image_size = image_size
         self.get_tokens()
