@@ -9,4 +9,5 @@ This repo is a part of senior project titled "Translating Images into Maps for A
 ## Label Generation
 1. Download [nuScenes](https://www.nuscenes.org/nuscenes) dataset and its map expansion.
 2. Extract a dataset folder at root and rename it to "nuscenes".
+3. Set `nuscenes_version` in `\configs\configs.yml`.
 3. Run `label_generation.py`.
