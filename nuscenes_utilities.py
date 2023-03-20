@@ -13,36 +13,54 @@ from nuscenes.eval.detection.utils import category_to_detection_name
 
 
 NUSCENES_CLASS_NAMES = [
-    'drivable_area', 'ped_crossing', 'walkway', 'carpark', 'car', 'truck', 
-    'bus', 'trailer', 'construction_vehicle', 'pedestrian', 'motorcycle', 
-    'bicycle', 'traffic_cone', 'barrier'
+    "drivable_area",
+    "ped_crossing",
+    "walkway",
+    "carpark",
+    "car",
+    "truck",
+    "bus",
+    "trailer",
+    "construction_vehicle",
+    "pedestrian",
+    "motorcycle",
+    "bicycle",
+    "traffic_cone",
+    "barrier",
 ]
 
-STATIC_CLASSES = ['drivable_area', 'ped_crossing', 'walkway', 'carpark_area']
+STATIC_CLASSES = [
+    "drivable_area",
+    "ped_crossing",
+    "walkway",
+    "carpark_area",
+]
 
-LOCATIONS = ['boston-seaport', 'singapore-onenorth', 'singapore-queenstown',
-             'singapore-hollandvillage']
+LOCATIONS = [
+    "boston-seaport",
+    "singapore-onenorth",
+    "singapore-queenstown",
+    "singapore-hollandvillage",
+]
 
 
 def load_map_data(dataroot: str):
-    map_data = { location : load_single_map_data(dataroot, location) 
-                 for location in LOCATIONS }
+    map_data = {
+        location: load_location_map_data(
+            dataroot,
+            location,
+        )
+        for location in LOCATIONS
+    }
     return map_data
 
 
-def load_single_map_data(dataroot: str, location: str):
+def load_location_map_data(dataroot: str, location: str):
 
     # Load the NuScenes map object
     nusc_map = NuScenesMap(dataroot, location)
 
     map_data = OrderedDict()
-
-    STATIC_CLASSES = [
-        "drivable_area",
-        "ped_crossing",
-        "walkway",
-        "carpark_area",
-    ]
 
     for layer in STATIC_CLASSES:
 
@@ -75,10 +93,10 @@ def load_single_map_data(dataroot: str, location: str):
 
 def iterate_samples(nuscenes, start_token: str):
     sample_token = start_token
-    while sample_token != '':
-        sample = nuscenes.get('sample', sample_token)
+    while sample_token != "":
+        sample = nuscenes.get("sample", sample_token)
         yield sample
-        sample_token = sample['next']
+        sample_token = sample["next"]
 
 
 # -- utility functions for process_sample -- #
@@ -87,7 +105,7 @@ def iterate_samples(nuscenes, start_token: str):
 def load_point_cloud(nuscenes, sample_data):
 
     # Load point cloud
-    lidar_path = os.path.join(nuscenes.dataroot, sample_data['filename'])
+    lidar_path = os.path.join(nuscenes.dataroot, sample_data["filename"])
     pcl = LidarPointCloud.from_file(lidar_path)
     return pcl.points[:3, :].T
 
@@ -95,12 +113,11 @@ def load_point_cloud(nuscenes, sample_data):
 def get_sensor_transform(nuscenes, sample_data):
 
     # Load sensor transform data
-    sensor = nuscenes.get(
-        'calibrated_sensor', sample_data['calibrated_sensor_token'])
+    sensor = nuscenes.get("calibrated_sensor", sample_data["calibrated_sensor_token"])
     sensor_tfm = make_transform_matrix(sensor)
 
     # Load ego pose data
-    pose = nuscenes.get('ego_pose', sample_data['ego_pose_token'])
+    pose = nuscenes.get("ego_pose", sample_data["ego_pose_token"])
     pose_tfm = make_transform_matrix(pose)
 
     return np.dot(pose_tfm, sensor_tfm)
@@ -111,8 +128,8 @@ def make_transform_matrix(record):
     Create a 4x4 transform matrix from a calibrated_sensor or ego_pose record
     """
     transform = np.eye(4)
-    transform[:3, :3] = Quaternion(record['rotation']).rotation_matrix
-    transform[:3, 3] = np.array(record['translation'])
+    transform[:3, :3] = Quaternion(record["rotation"]).rotation_matrix
+    transform[:3, 3] = np.array(record["translation"])
     return transform
 
 
@@ -124,12 +141,14 @@ def transform(matrix, vectors):
 
 # -- utility functions for process_sample_data -- #
 
+
 def transform_polygon(polygon, affine):
     """
     Transform a 2D polygon
     """
     a, b, tx, c, d, ty = affine.flatten()[:6]
     return affinity.affine_transform(polygon, [a, b, c, d, tx, ty])
+
 
 def render_polygon(mask, polygon, extents, resolution, value=1):
     if len(polygon) == 0:
@@ -138,11 +157,14 @@ def render_polygon(mask, polygon, extents, resolution, value=1):
     polygon = np.ascontiguousarray(polygon).round().astype(np.int32)
     cv2.fillConvexPoly(mask, polygon, value)
 
+
 def get_map_masks(nuscenes, map_data, sample_data, extents, resolution):
 
     # Render each layer sequentially
-    layers = [get_layer_mask(nuscenes, polys, sample_data, extents, 
-              resolution) for layer, polys in map_data.items()]
+    layers = [
+        get_layer_mask(nuscenes, polys, sample_data, extents, resolution)
+        for layer, polys in map_data.items()
+    ]
 
     return np.stack(layers, axis=0)
 
@@ -159,8 +181,9 @@ def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
 
     # Initialise the map mask
     x1, z1, x2, z2 = extents
-    mask = np.zeros((int((z2 - z1) / resolution), int((x2 - x1) / resolution)),
-                    dtype=np.uint8)
+    mask = np.zeros(
+        (int((z2 - z1) / resolution), int((x2 - x1) / resolution)), dtype=np.uint8
+    )
 
     # Find all polygons which intersect with the area of interest
     for polygon in polygons.query(map_patch):
@@ -176,8 +199,19 @@ def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
 
     return mask.astype(np.bool)
 
-DETECTION_NAMES = ['car', 'truck', 'bus', 'trailer', 'construction_vehicle', 'pedestrian', 'motorcycle', 'bicycle',
-                   'traffic_cone', 'barrier']
+
+DETECTION_NAMES = [
+    "car",
+    "truck",
+    "bus",
+    "trailer",
+    "construction_vehicle",
+    "pedestrian",
+    "motorcycle",
+    "bicycle",
+    "traffic_cone",
+    "barrier",
+]
 
 
 def get_object_masks(nuscenes, sample_data, extents, resolution):
@@ -192,7 +226,7 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
     tfm = get_sensor_transform(nuscenes, sample_data)[[0, 1, 3]][:, [0, 2, 3]]
     inv_tfm = np.linalg.inv(tfm)
 
-    for box in nuscenes.get_boxes(sample_data['token']):
+    for box in nuscenes.get_boxes(sample_data["token"]):
 
         # Get the index of the class
         det_name = category_to_detection_name(box.name)
@@ -200,15 +234,16 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
             class_id = -1
         else:
             class_id = DETECTION_NAMES.index(det_name)
-        
+
         # Get bounding box coordinates in the grid coordinate frame
         bbox = box.bottom_corners()[:2]
         local_bbox = np.dot(inv_tfm[:2, :2], bbox).T + inv_tfm[:2, 2]
 
         # Render the rotated bounding box to the mask
         render_polygon(masks[class_id], local_bbox, extents, resolution)
-    
+
     return masks.astype(np.bool)
+
 
 def get_visible_mask(instrinsics, image_width, extents, resolution):
 
@@ -223,9 +258,10 @@ def get_visible_mask(instrinsics, image_width, extents, resolution):
     # Return all points which lie within the camera bounds
     return (ucoords >= 0) & (ucoords < image_width)
 
+
 def render_shapely_polygon(mask, polygon, extents, resolution):
 
-    if polygon.geom_type == 'Polygon':
+    if polygon.geom_type == "Polygon":
 
         # Render exteriors
         render_polygon(mask, polygon.exterior.coords, extents, resolution, 1)
@@ -233,7 +269,7 @@ def render_shapely_polygon(mask, polygon, extents, resolution):
         # Render interiors
         for hole in polygon.interiors:
             render_polygon(mask, hole.coords, extents, resolution, 0)
-    
+
     # Handle the case of compound shapes
     else:
         for poly in list(polygon.geoms):
