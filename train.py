@@ -22,6 +22,8 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
+        start_scene_index=config.train_start_scene,
+        end_scene_index=config.train_end_scene,
     )
 
     train_loader = DataLoader(
@@ -83,7 +85,7 @@ def main():
 
             logger.log_step(loss=loss.item())
 
-        logger.log_epoch()
+        logger.log_epoch(network)
 
 
 if __name__ == "__main__":

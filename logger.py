@@ -1,8 +1,9 @@
 from torch.utils.tensorboard import SummaryWriter
-from dataset import NuSceneDataset
-from torch.utils.data import DataLoader
+import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
+from dataset import NuSceneDataset
 from configs.config_utilities import load_config
 
 
@@ -17,13 +18,15 @@ class TensorboardLogger:
 
         config = load_config()
 
-        val_dataset = NuSceneDataset(
+        validate_dataset = NuSceneDataset(
             nuscenes_dir=config.nuscenes_dir,
             nuscenes_version=config.nuscenes_version,
             label_dir=config.label_dir,
+            start_scene_index=config.val_start_scene,
+            end_scene_index=config.val_end_scene,
         )
-        self.val_loader = DataLoader(
-            val_dataset,
+        self.validate_loader = DataLoader(
+            validate_dataset,
             batch_size=2,
             num_workers=2,
             pin_memory=True,
@@ -36,7 +39,7 @@ class TensorboardLogger:
         self.training_step += 1
         self.num_steps_per_epoch += 1
 
-    def log_epoch(self):
+    def log_epoch(self, network: nn.Module):
 
         # Training
         self.writer.add_scalar(
@@ -47,3 +50,30 @@ class TensorboardLogger:
 
         self.training_loss = 0
         self.num_steps_per_epoch = 0
+        self.validate(network)
+
+    def validate(self, network: nn.Module):
+        network.eval()  # set network's behavior to evaluation mode
+
+        total_loss = 0
+        num_step = 0
+
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(self.validate_loader):
+
+                image, labels, mask = batch
+                image = image.to(self.device)
+                labels = labels.to(self.device).type(torch.FloatTensor)
+                mask = mask.to(self.device)
+
+                prediction = network(image).to(self.device)
+                loss = self.loss_fn(prediction, labels).to(self.device)
+                total_loss += loss.item()
+                num_step += 1
+
+        self.writer.add_scalar(
+            "Validate/avg_loss",
+            total_loss / num_step,
+            self.training_step,
+        )
+        network.train()  # set network's behavior to training mode
