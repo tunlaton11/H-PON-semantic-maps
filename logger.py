@@ -63,7 +63,7 @@ class TensorboardLogger:
 
                 image, labels, mask = batch
                 image = image.to(self.device)
-                labels = labels.to(self.device).type(torch.FloatTensor)
+                labels = labels.type(torch.FloatTensor).to(self.device)
                 mask = mask.to(self.device)
 
                 prediction = network(image).to(self.device)

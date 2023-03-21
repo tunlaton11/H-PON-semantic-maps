@@ -11,6 +11,6 @@ def load_config() -> CfgNode:
         Configurations
     """
     
-    config_path = os.path.join(os.getcwd(), "configs\configs.yml")
+    config_path = os.path.join(os.getcwd(), "configs", "configs.yml")
     with open(config_path) as f:
         return CfgNode.load_cfg(f)

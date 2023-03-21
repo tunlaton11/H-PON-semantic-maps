@@ -65,7 +65,7 @@ def main():
 
             image, labels, mask = batch
             image = image.to(device)
-            labels = labels.to(device).type(torch.FloatTensor)
+            labels = labels.type(torch.FloatTensor).to(device)
             mask = mask.to(device)
 
             prediction = network(image).to(device)
