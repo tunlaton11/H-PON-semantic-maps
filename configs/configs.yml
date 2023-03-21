@@ -3,6 +3,11 @@ nuscenes_version: v1.0-mini
 label_dir: labels
 log_dir: logs
 
+train_start_scene: 0
+train_end_scene: 1
+val_start_scene: 1
+val_end_scene: 2
+
 # Top-left and bottom right coordinates of map region, in meters
 map_extents: [-25.0, 1.0, 25.0, 50.0]
 # Spacing between adjacent grid cells in the map, in meters

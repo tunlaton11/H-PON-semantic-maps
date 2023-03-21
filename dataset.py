@@ -14,23 +14,30 @@ class NuSceneDataset(Dataset):
         nuscenes_dir: str,
         nuscenes_version: str,
         label_dir: str,
+        start_scene_index: int,
+        end_scene_index: int,
         image_size=(200, 196),
         transform=None,
     ):
         self.nuscenes = NuScenes(nuscenes_version, nuscenes_dir)
         self.label_dir = label_dir
         self.image_size = image_size
-        self.get_tokens()
+        self.get_tokens(start_scene_index, end_scene_index)
 
-    def get_tokens(self, scene_names=None):
+    def get_tokens(
+        self,
+        start_scene_index: int,
+        end_scene_index: int,
+        scene_names=None,
+    ):
         self.tokens = list()
 
         # Iterate over scenes
-        for scene in self.nuscenes.scene[:1]:
+        for scene in self.nuscenes.scene[start_scene_index:end_scene_index]:
 
-            # Ignore scenes which don't belong to the current split
-            if scene_names is not None and scene["name"] not in scene_names:
-                continue
+            # # Ignore scenes which don't belong to the current split
+            # if scene_names is not None and scene["name"] not in scene_names:
+            #     continue
 
             # Iterate over samples
             for sample in nusc_utils.iterate_samples(
@@ -44,13 +51,13 @@ class NuSceneDataset(Dataset):
     def __len__(self):
         return len(self.tokens)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         token = self.tokens[index]
         image = self.load_image(token)
         labels, mask = self.load_labels(token)
         return image, labels, mask
 
-    def load_image(self, token):
+    def load_image(self, token: str):
 
         # Load image as a PIL image
         image = Image.open(self.nuscenes.get_sample_data_path(token))
@@ -61,7 +68,7 @@ class NuSceneDataset(Dataset):
         # Convert to a torch tensor
         return to_tensor(image)
 
-    def load_labels(self, token):
+    def load_labels(self, token: str):
 
         # Load label image as a torch tensor
         label_path = os.path.join(self.label_dir, token + ".png")
