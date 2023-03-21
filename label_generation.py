@@ -99,5 +99,5 @@ if __name__ == "__main__":
     label_dir = os.path.expandvars(config.label_dir)
     os.makedirs(label_dir, exist_ok=True)
 
-    for scene in tqdm(nuscenes.scene[:3]):
+    for scene in tqdm(nuscenes.scene):
         process_scene(nuscenes, map_data, scene, config)

@@ -1,6 +1,7 @@
 from configs.config_utilities import load_config
 from dataset import NuSceneDataset
 from model import UNET
+from nuscenes_utilities import NUSCENES_CLASS_NAMES
 
 import numpy as np
 import torch
@@ -9,8 +10,10 @@ import torch.optim as optim
 import torchvision.transforms.functional as TF
 from torch.utils.data import DataLoader
 
+
 import platform
 import re
+from tqdm import tqdm
 
 import time
 from logger import TensorboardLogger
@@ -22,13 +25,12 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        start_scene_index=config.train_start_scene,
-        end_scene_index=config.train_end_scene,
+        scene_names=config.train_scenes,
     )
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=2,
+        batch_size=4,
         num_workers=2,
         pin_memory=True,
         shuffle=True,
@@ -59,8 +61,8 @@ def main():
 
     network.to(device)
 
-    for epoch in range(20):
-        print(f"Training epoch {epoch+1}...")
+    for epoch in tqdm(range(20)):
+        # print(f"Training epoch {epoch+1}...")
         for batch_idx, batch in enumerate(train_loader):
 
             image, labels, mask = batch
@@ -85,7 +87,7 @@ def main():
 
             logger.log_step(loss=loss.item())
 
-        logger.log_epoch(network)
+        logger.log_epoch(network, epoch)
 
 
 if __name__ == "__main__":

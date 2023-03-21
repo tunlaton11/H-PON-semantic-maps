@@ -14,30 +14,27 @@ class NuSceneDataset(Dataset):
         nuscenes_dir: str,
         nuscenes_version: str,
         label_dir: str,
-        start_scene_index: int,
-        end_scene_index: int,
         image_size=(200, 196),
         transform=None,
+        scene_names=None,
     ):
         self.nuscenes = NuScenes(nuscenes_version, nuscenes_dir)
         self.label_dir = label_dir
         self.image_size = image_size
-        self.get_tokens(start_scene_index, end_scene_index)
+        self.get_tokens(scene_names)
 
     def get_tokens(
         self,
-        start_scene_index: int,
-        end_scene_index: int,
         scene_names=None,
     ):
         self.tokens = list()
 
         # Iterate over scenes
-        for scene in self.nuscenes.scene[start_scene_index:end_scene_index]:
+        for scene in self.nuscenes.scene:
 
             # # Ignore scenes which don't belong to the current split
-            # if scene_names is not None and scene["name"] not in scene_names:
-            #     continue
+            if scene_names is not None and scene["name"] not in scene_names:
+                continue
 
             # Iterate over samples
             for sample in nusc_utils.iterate_samples(
