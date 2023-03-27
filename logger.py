@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from nuscenes_utilities import NUSCENES_CLASS_NAMES
 from matplotlib.cm import get_cmap
 
-from dataset import NuSceneDataset
+from dataset import NuScenesDataset
 from configs.config_utilities import load_config
 
 
@@ -20,7 +20,7 @@ class TensorboardLogger:
 
         config = load_config()
 
-        validate_dataset = NuSceneDataset(
+        validate_dataset = NuScenesDataset(
             nuscenes_dir=config.nuscenes_dir,
             nuscenes_version=config.nuscenes_version,
             label_dir=config.label_dir,
@@ -35,7 +35,7 @@ class TensorboardLogger:
         )
         self.loss_fn = nn.CrossEntropyLoss().to(self.device)
 
-    def log_step(self, loss):
+    def log_step(self, loss: float):
         self.training_loss += loss
         self.training_step += 1
         self.num_steps_per_epoch += 1

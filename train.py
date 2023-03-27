@@ -1,7 +1,6 @@
 from configs.config_utilities import load_config
-from dataset import NuSceneDataset
+from dataset import NuScenesDataset
 from model import UNET
-from nuscenes_utilities import NUSCENES_CLASS_NAMES
 
 import numpy as np
 import torch
@@ -21,7 +20,7 @@ from logger import TensorboardLogger
 
 def main():
     config = load_config()
-    train_dataset = NuSceneDataset(
+    train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
@@ -75,14 +74,14 @@ def main():
             # print('pred', prediction.shape, type(prediction))
             # print('true label', labels.shape, type(labels))
 
-            # 4.2 compute loss
+            # compute loss
             loss = loss_fn(prediction, labels).to(device)
 
-            # 4.3 compute gradient
+            # compute gradient
             optimizer.zero_grad()
             loss.backward()
 
-            # 4.4 update weights
+            # update weights
             optimizer.step()
 
             logger.log_step(loss=loss.item())

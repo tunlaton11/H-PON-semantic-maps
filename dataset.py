@@ -8,7 +8,7 @@ from nuscenes import NuScenes
 import nuscenes_utilities as nusc_utils
 
 
-class NuSceneDataset(Dataset):
+class NuScenesDataset(Dataset):
     def __init__(
         self,
         nuscenes_dir: str,
