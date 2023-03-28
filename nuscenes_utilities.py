@@ -316,6 +316,29 @@ def encode_binary_labels(masks):
     return (masks.astype(np.int32) * bits.reshape(-1, 1, 1)).sum(0)
 
 
-def decode_binary_labels(labels, nclass):
+def decode_binary_labels_old(labels, nclass):
     bits = torch.pow(2, torch.arange(nclass))
     return (labels & bits.view(-1, 1, 1)) > 0
+
+
+def decode_binary_labels(
+    encoded_labels: np.ndarray,
+    n_classes: int,
+) -> np.ndarray:
+    bits = 2 ** np.arange(n_classes, dtype=np.int32)
+    bits = bits.reshape(-1, 1, 1)
+    encoded_labels = encoded_labels.astype(np.int32)
+    return (encoded_labels & bits) > 0
+
+
+def flatten_labels(
+    labels: np.ndarray,
+    mask: np.ndarray = None,
+) -> np.ndarray:
+    flattened_label = np.zeros_like(labels[0])
+    for i, label in enumerate(labels):
+        label = label * (i + 1)
+        flattened_label = np.maximum(flattened_label, label)
+    if mask is not None:
+        flattened_label[~mask] = 0
+    return flattened_label
