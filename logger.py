@@ -68,14 +68,13 @@ class TensorboardLogger:
                 mask = mask.to(self.device)
 
                 prediction = network(image).to(self.device)
+                prediction = prediction.sigmoid()
                 loss = self.loss_fn(prediction, labels).to(self.device)
                 total_loss += loss.item()
                 num_step += 1
 
-        scores = prediction.sigmoid()
-
         visualise(
-            self.writer, image, scores, labels, mask, epoch, "nuscenes", split="val"
+            self.writer, image, prediction, labels, mask, epoch, "nuscenes", split="val"
         )
 
         self.writer.add_scalar(

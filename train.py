@@ -8,7 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms.functional as TF
 from torch.utils.data import DataLoader
-
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 import platform
 import re
@@ -20,11 +21,27 @@ from logger import TensorboardLogger
 
 def main():
     config = load_config()
+
+    train_transform = A.Compose(
+        [
+            A.Resize(height=196, width=200),
+            A.Rotate(limit=35, p=0.8),
+            A.HorizontalFlip(p=0.5),
+            A.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+                max_pixel_value=255.0,
+            ),
+            ToTensorV2(),
+        ]
+    )
+
     train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
         scene_names=config.train_scenes,
+        # transform=train_transform,
     )
 
     train_loader = DataLoader(
@@ -39,6 +56,7 @@ def main():
 
     this_device = platform.platform()
     if torch.cuda.is_available():
+        torch.cuda.empty_cache()
         device = "cuda"
     elif re.search("arm64", this_device):
         # use Apple GPU
@@ -54,8 +72,8 @@ def main():
 
     print(f"----- Training on {device} -----")
 
-    loss_fn = nn.CrossEntropyLoss().to(device)
-    # loss_fn = nn.BCELoss()
+    # loss_fn = nn.CrossEntropyLoss().to(device)
+    loss_fn = nn.BCELoss().to(device)
     optimizer = optim.Adam(network.parameters(), lr=0.001)
 
     network.to(device)
@@ -70,8 +88,10 @@ def main():
             mask = mask.to(device)
 
             prediction = network(image).to(device)
+            prediction = prediction.sigmoid()
 
-            # print('pred', prediction.shape, type(prediction))
+            # print("pred", prediction.shape, type(prediction))
+            # break
             # print('true label', labels.shape, type(labels))
 
             # compute loss
