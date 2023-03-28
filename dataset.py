@@ -18,10 +18,10 @@ class NuScenesDataset(Dataset):
         nuscenes_dir: str,
         nuscenes_version: str,
         label_dir: str,
-        image_size:Tuple[int, int]=(200, 196),
-        transform:A.Compose=None,
-        image_transform:A.Compose=None,
-        scene_names:Iterable[str]=None,
+        image_size: Tuple[int, int] = (200, 196),
+        transform: A.Compose = None,
+        image_transform: A.Compose = None,
+        scene_names: Iterable[str] = None,
         flatten_labels=False,
     ):
         print("-" * 50)
@@ -41,7 +41,7 @@ class NuScenesDataset(Dataset):
 
     def get_tokens(
         self,
-        scene_names:Iterable[str]=None,
+        scene_names: Iterable[str] = None,
     ):
         self.tokens = list()
 
@@ -70,7 +70,6 @@ class NuScenesDataset(Dataset):
         labels, mask = self.load_labels(token)
 
         if self.flatten_labels:
-            labels = labels.detach().numpy()
             labels = nusc_utils.flatten_labels(labels)
 
         if self.transform is not None:
@@ -82,7 +81,7 @@ class NuScenesDataset(Dataset):
             image = augmentations["image"]
             labels = augmentations["labels"]
             mask = augmentations["mask"]
-        
+
         if self.image_transform is not None:
             augmentations = self.image_transform(image=image)
             image = augmentations["image"]
