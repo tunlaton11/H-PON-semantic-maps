@@ -32,7 +32,6 @@ def main():
                 std=[0.229, 0.224, 0.225],
                 max_pixel_value=255.0,
             ),
-            ToTensorV2(),
         ]
     )
 
@@ -46,8 +45,22 @@ def main():
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=4,
-        num_workers=2,
+        batch_size=config.batch_size,
+        num_workers=config.num_workers,
+        pin_memory=True,
+        shuffle=True,
+    )
+
+    validate_dataset = NuScenesDataset(
+        nuscenes_dir=config.nuscenes_dir,
+        nuscenes_version=config.nuscenes_version,
+        label_dir=config.label_dir,
+        scene_names=config.val_scenes,
+    )
+    validate_loader = DataLoader(
+        validate_dataset,
+        batch_size=config.batch_size,
+        num_workers=config.num_workers,
         pin_memory=True,
         shuffle=True,
     )
@@ -64,17 +77,20 @@ def main():
     else:
         device = "cpu"
 
-    current_time = time.time()
-    logger = TensorboardLogger(
-        device,
-        log_dir=f"{config.log_dir}/{current_time}",
-    )
 
     print(f"----- Training on {device} -----")
 
     # loss_fn = nn.CrossEntropyLoss().to(device)
     loss_fn = nn.BCELoss().to(device)
     optimizer = optim.Adam(network.parameters(), lr=0.001)
+
+    current_time = time.time()
+    logger = TensorboardLogger(
+        device,
+        log_dir=f"{config.log_dir}/{current_time}",
+        validate_loader=validate_loader,
+        loss_fn=loss_fn
+    )
 
     network.to(device)
 

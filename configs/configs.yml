@@ -3,6 +3,12 @@ nuscenes_version: v1.0-mini
 label_dir: labels
 log_dir: logs
 
+# Number of examples per mini-batch
+batch_size: 4
+
+# Number of dataloader threads
+num_workers: 2
+
 train_scenes:
   [
     'scene-0061',

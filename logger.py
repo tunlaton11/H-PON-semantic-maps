@@ -5,12 +5,15 @@ from torch.utils.data import DataLoader
 from nuscenes_utilities import NUSCENES_CLASS_NAMES
 from matplotlib.cm import get_cmap
 
-from dataset import NuScenesDataset
-from configs.config_utilities import load_config
-
 
 class TensorboardLogger:
-    def __init__(self, device, log_dir):
+    def __init__(
+        self,
+        device: str,
+        log_dir: str,
+        validate_loader: DataLoader,
+        loss_fn,
+    ):
         self.device = device
         self.writer = SummaryWriter(log_dir)
 
@@ -18,22 +21,8 @@ class TensorboardLogger:
         self.training_loss = 0
         self.num_steps_per_epoch = 0
 
-        config = load_config()
-
-        validate_dataset = NuScenesDataset(
-            nuscenes_dir=config.nuscenes_dir,
-            nuscenes_version=config.nuscenes_version,
-            label_dir=config.label_dir,
-            scene_names=config.val_scenes,
-        )
-        self.validate_loader = DataLoader(
-            validate_dataset,
-            batch_size=4,
-            num_workers=2,
-            pin_memory=True,
-            shuffle=True,
-        )
-        self.loss_fn = nn.CrossEntropyLoss().to(self.device)
+        self.validate_loader = validate_loader
+        self.loss_fn = loss_fn
 
     def log_step(self, loss: float):
         self.training_loss += loss
