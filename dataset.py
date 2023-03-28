@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import cv2
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms.functional import to_tensor
@@ -21,6 +22,7 @@ class NuScenesDataset(Dataset):
         self.nuscenes = NuScenes(nuscenes_version, nuscenes_dir)
         self.label_dir = label_dir
         self.image_size = image_size
+        self.transform = transform
         self.get_tokens(scene_names)
 
     def get_tokens(
@@ -52,18 +54,32 @@ class NuScenesDataset(Dataset):
         token = self.tokens[index]
         image = self.load_image(token)
         labels, mask = self.load_labels(token)
-        return image, labels, mask
+
+        # labels = labels.cpu().detach().numpy().astype("float32")
+        # mask = mask.detach().numpy().astype("float32")
+
+        if self.transform is not None:
+            augmentations = self.transform(image=image, labels=labels)
+            image = augmentations["image"]
+            labels = augmentations["labels"]
+            # mask = augmentations["mask"]
+
+        return to_tensor(image), labels, mask
 
     def load_image(self, token: str):
 
         # Load image as a PIL image
+        # image = cv2.imread(self.nuscenes.get_sample_data_path(token))[
+        #     :, :, ::-1
+        # ].astype(np.float32)
         image = Image.open(self.nuscenes.get_sample_data_path(token))
 
         # Resize to input resolution
         image = image.resize(self.image_size)
 
         # Convert to a torch tensor
-        return to_tensor(image)
+
+        return image
 
     def load_labels(self, token: str):
 
@@ -77,3 +93,14 @@ class NuScenesDataset(Dataset):
         labels, mask = labels[:-1], ~labels[-1]
 
         return labels, mask
+
+
+if __name__ == "__main__":
+
+    dataset = NuScenesDataset(
+        nuscenes_dir="nuscenes", nuscenes_version="v1.0-mini", label_dir="labels"
+    )
+
+    image, labels, mask = dataset[0]
+    print(labels[0])
+    print(labels.shape)
