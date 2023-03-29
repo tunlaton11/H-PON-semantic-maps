@@ -1,5 +1,5 @@
 import os
-from typing import Iterable, Tuple
+from typing import Iterable
 import numpy as np
 import cv2
 from torch.utils.data import Dataset
@@ -18,12 +18,40 @@ class NuScenesDataset(Dataset):
         nuscenes_dir: str,
         nuscenes_version: str,
         label_dir: str,
-        image_size: Tuple[int, int] = (200, 196),
+        scene_names: Iterable[str] = None,
+        image_size: tuple[int, int] = (200, 196),
         transform: A.Compose = None,
         image_transform: A.Compose = None,
-        scene_names: Iterable[str] = None,
         flatten_labels=False,
     ):
+        """NuScenes Dataset.
+
+        Parameters
+        ----------
+        nuscenes_dir : str
+            Path of NuScenes data directory.
+        nuscenes_version : str
+            Version of NuScenes to load e.g. "v1.0-mini".
+        label_dir : str
+            Path of label directory.
+        scene_names : list[str], optional
+            List of scene names for the dataset. If None, the dataset
+            includes all scenes.
+        image_size : (width, height), optional
+            Size of image.
+        transform : A.Compose, optional
+            Albumentations Compose Transform for image, label, and mask.
+            e.g. horizontal flip. Do not include ToTensorV2 in transform
+            as the dataset has its own torch tensor convert.
+        image_transform : A.Compose, optional
+            Albumentations Compose Transform for image.
+            e.g. brightness, contrast, saturation. Do not include
+            ToTensorV2 in transform as the dataset has its own torch
+            tensor convert.
+        flatten_labels : bool, optional
+            If true, labels are flatten to one channel instead of
+            n_classes channels. Default: False.
+        """
         print("-" * 50)
         print(f"Loading NuScenes version {nuscenes_version} ...")
         self.nuscenes = NuScenes(
@@ -56,7 +84,6 @@ class NuScenesDataset(Dataset):
             for sample in nusc_utils.iterate_samples(
                 self.nuscenes, scene["first_sample_token"]
             ):
-
                 self.tokens.append(sample["data"]["CAM_FRONT"])
 
         return self.tokens
@@ -100,7 +127,8 @@ class NuScenesDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Resize to input resolution
-        image = cv2.resize(image, self.image_size)
+        if self.image_size is not None:
+            image = cv2.resize(image, self.image_size)
 
         return image
 
@@ -121,7 +149,9 @@ class NuScenesDataset(Dataset):
 if __name__ == "__main__":
 
     dataset = NuScenesDataset(
-        nuscenes_dir="nuscenes", nuscenes_version="v1.0-mini", label_dir="labels"
+        nuscenes_dir="nuscenes",
+        nuscenes_version="v1.0-mini",
+        label_dir="labels",
     )
 
     image, labels, mask = dataset[0]
