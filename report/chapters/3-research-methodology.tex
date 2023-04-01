@@ -1,11 +1,33 @@
 \chapter{Research Methodology}
 
 
-\section{Topic 1}
+\section{Data Preparation}
 
-Text goes here.
+We obtained our dataset from Motional AD Inc's publicly available nuScenes dataset version 1.0-mini. This dataset consists of 10 different scenes,
+each approximately 20 seconds long, with annotated data provided every half a second (2 Hz).
 
-\section{Topic 2}
+Next, we used nuScenes devkit package in Python. This package provides a suite of tools to 
+easily query and retrieve data from the nuScenes dataset. Only the front-facing camera channel (CAM\_FRONT) was utilized
+with 14 classes. These classes are as follows:
+\begin{itemize}
+    \item drivable area
+    \item ped crossing
+    \item walkway
+    \item carpark
+    \item car
+    \item truck
+    \item bus
+    \item trailer
+    \item construction vehicle
+    \item pedestrian
+    \item motorcycle
+    \item bicycle
+    \item traffic cone
+    \item barrier
+\end{itemize}
+
+
+\section{Data generation}
 
 Text goes here.
 
