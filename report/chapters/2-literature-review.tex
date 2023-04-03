@@ -2,29 +2,30 @@
 
 \section{Autonomous Driving}
 
-A vehicle is considered to be autonomous when it is capable of driving by itself without human supervision. \cite{Springer_AutonomousDriving} The Society of Automotive Engineers (SAE) defines 6 levels of driving automation, ranging from no driving automation (level 0) to full driving automation (level 5)\cite{SAE_AutomationLevels}, which are described in table \ref{tab:sae-driving-automation}.
+A vehicle is considered to be autonomous when it is capable of travelling by itself without human supervision. \cite{Springer_AutonomousDriving}  The Society of Automotive Engineers (SAE)'s On-Road Automated Driving Committee defines 6 levels of driving automation, ranging from no driving automation (level 0) to full driving automation (level 5)\cite{SAE_AutomationLevels}, which are described in table \ref{tab:sae-driving-automation}.
+
 
 
 \begin{table}[h]
 \begin{tabularx}{\textwidth}{p{4cm}|X}
 \textbf{Level} & \textbf{Description} \\
 \hline
-Level 0: No Driving Automation & 
+\raggedright{Level 0: No Driving Automation} & 
 A driver is fully responsible for driving task. The vehicle may provide driving assistance feature e.g. warnings and alerts.\\ 
 \hline
-Level 1: Driver Assistance &
+\raggedright{Level 1: Driver Assistance} &
 A driver is responsible for driving task. The driving automation system provide continuous assistance with acceleration, braking, or steering.\\
 \hline
-Level 2: Partial Driving Automation &
+\raggedright{Level 2: Partial Driving Automation} &
 A driver supervises driving task. The driving automation system provide continuous assistance with acceleration, braking, and steering.\\
 \hline
-Level 3: Conditional Driving Automation &
+\raggedright{Level 3: Conditional Driving Automation} &
 The driving automation system performs driving task, while a driver is required during a fallback.\\
 \hline
-Level 4: High Driving Automation &
+\raggedright{Level 4: High Driving Automation} &
 The driving automation system performs driving task only within specific conditions or designated area.\\
 \hline
-Level 5: Full Driving Automation &
+\raggedright{Level 5: Full Driving Automation} &
 The driving automation system performs driving task unconditionally. There is no need for a driver.
 
 \end{tabularx}
@@ -33,15 +34,16 @@ The driving automation system performs driving task unconditionally. There is no
 \end{table}
 
 
+\section{Map Representations for Autonomous Driving}
+
+Top-down maps are an important representation for autonomous driving because they provide a bird's eye view of the environment. The contextual information on the maps helps autonomous driving systems can make informed decisions in different driving scenarios, especially in efficient path planning and obstacle avoidance. 
+
+
 \section{nuScenes Dataset}
 
 The nuScenes dataset is a public dataset for autonomous driving developed by Motional AD Inc. It contains 1,000 driving scenes collected in Boston and Singapore. The full dataset includes approximately 1.4M camera images, 390k lidar (light detection and ranging) sweeps, 1.4M radar sweeps and 1.4M object bounding boxes in 40k keyframes with annotation of 23 object classes. The goal of dataset developer team is to allow researchers across the world to develop safe autonomous driving technology. \cite{nuscenes2019}
 
-\section{Topic 2}
 
-Text goes here.
+\section{Image segmentation}
 
-\section{Topic 3}
-
-Text goes here.
-
+Image segmentation is a fundamental task in computer vision that aims to partition an input image into meaningful and homogeneous regions. The objective of image segmentation is to simplify the representation of an image, while preserving the semantic information of the underlying scene.
