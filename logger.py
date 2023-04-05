@@ -57,7 +57,7 @@ class TensorboardLogger:
                 mask = mask.to(self.device)
 
                 prediction = network(image).to(self.device)
-                prediction = prediction.sigmoid()
+                # prediction = prediction.sigmoid()
                 loss = self.loss_fn(prediction, labels).to(self.device)
                 total_loss += loss.item()
                 num_step += 1

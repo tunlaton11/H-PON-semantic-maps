@@ -77,24 +77,52 @@ def main():
     else:
         device = "cpu"
 
-
     print(f"----- Training on {device} -----")
 
-    # loss_fn = nn.CrossEntropyLoss().to(device)
-    loss_fn = nn.BCELoss().to(device)
-    optimizer = optim.Adam(network.parameters(), lr=0.001)
+    loss_fn = nn.BCEWithLogitsLoss().to(device)
+    # loss_fn = nn.BCELoss().to(device)
+    optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
     current_time = time.time()
     logger = TensorboardLogger(
         device,
         log_dir=f"{config.log_dir}/{current_time}",
         validate_loader=validate_loader,
-        loss_fn=loss_fn
+        loss_fn=loss_fn,
     )
+
+    config_log_table = f"""
+        <table>
+            <tr>
+                <th>Nuscenes Version</th>
+                <th>Is augmentation</th>
+                <th>Batch Size</th>
+                <th>Num Workers</th>
+                <th>Learning Rate</th>
+                <th>Number of epochs</th>
+                <th>Device</th>
+                <th>Loss function</th>
+                <th>Optimizer</th>
+            </tr>
+            <tr>
+                <td>{config.nuscenes_version}</td>
+                <td>{train_dataset.transform is not None}</td>
+                <td>{config.batch_size}</td>
+                <td>{config.num_workers}</td>
+                <td>{config.lr}</td>
+                <td>{config.epochs}</td>
+                <td>{device}</td>
+                <td>{loss_fn.__class__.__name__}</td>
+                <td>{optimizer.__class__.__name__}</td>
+            </tr>
+        </table>
+    """
+
+    logger.writer.add_text("Experiment Configurations", config_log_table, global_step=0)
 
     network.to(device)
 
-    for epoch in tqdm(range(20)):
+    for epoch in tqdm(range(config.epochs)):
         # print(f"Training epoch {epoch+1}...")
         for batch_idx, batch in enumerate(train_loader):
 
@@ -104,11 +132,7 @@ def main():
             mask = mask.to(device)
 
             prediction = network(image).to(device)
-            prediction = prediction.sigmoid()
-
-            # print("pred", prediction.shape, type(prediction))
-            # break
-            # print('true label', labels.shape, type(labels))
+            # prediction = prediction.sigmoid()
 
             # compute loss
             loss = loss_fn(prediction, labels).to(device)
