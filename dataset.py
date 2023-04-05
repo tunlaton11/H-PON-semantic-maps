@@ -1,5 +1,5 @@
 import os
-from typing import Iterable
+from typing import Iterable, Tuple
 import numpy as np
 import cv2
 from torch.utils.data import Dataset
@@ -19,7 +19,7 @@ class NuScenesDataset(Dataset):
         nuscenes_version: str,
         label_dir: str,
         scene_names: Iterable[str] = None,
-        image_size: tuple[int, int] = (200, 196),
+        image_size: Tuple[int, int] = (200, 196),
         transform: A.Compose = None,
         image_transform: A.Compose = None,
         flatten_labels=False,
@@ -103,11 +103,9 @@ class NuScenesDataset(Dataset):
             augmentations = self.transform(
                 image=image,
                 labels=labels,
-                mask=mask,
             )
             image = augmentations["image"]
             labels = augmentations["labels"]
-            mask = augmentations["mask"]
 
         if self.image_transform is not None:
             augmentations = self.image_transform(image=image)
