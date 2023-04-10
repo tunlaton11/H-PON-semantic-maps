@@ -18,6 +18,7 @@ class NuScenesDataset(Dataset):
         nuscenes_dir: str,
         nuscenes_version: str,
         label_dir: str,
+        sample_tokens: Iterable[str] = None,
         scene_names: Iterable[str] = None,
         image_size: Tuple[int, int] = (200, 196),
         transform: A.Compose = None,
@@ -34,7 +35,9 @@ class NuScenesDataset(Dataset):
             Version of NuScenes to load e.g. "v1.0-mini".
         label_dir : str
             Path of label directory.
-        scene_names : list[str], optional
+        sample_tokens : list of str, optional
+            To-do!!
+        scene_names : list of str, optional
             List of scene names for the dataset. If None, the dataset
             includes all scenes.
         image_size : (width, height), optional
@@ -69,22 +72,26 @@ class NuScenesDataset(Dataset):
 
     def get_tokens(
         self,
+        sample_tokens: Iterable[str] = None,
         scene_names: Iterable[str] = None,
     ):
         self.tokens = list()
 
-        # Iterate over scenes
-        for scene in self.nuscenes.scene:
+        if sample_tokens is None:
+            # Iterate over scenes
+            for scene in self.nuscenes.scene:
 
-            # # Ignore scenes which don't belong to the current split
-            if scene_names is not None and scene["name"] not in scene_names:
-                continue
+                # # Ignore scenes which don't belong to the current split
+                if scene_names is not None and scene["name"] not in scene_names:
+                    continue
 
-            # Iterate over samples
-            for sample in nusc_utils.iterate_samples(
-                self.nuscenes, scene["first_sample_token"]
-            ):
-                self.tokens.append(sample["data"]["CAM_FRONT"])
+                # Iterate over samples
+                for sample in nusc_utils.iterate_samples(
+                    self.nuscenes, scene["first_sample_token"]
+                ):
+                    self.tokens.append(sample["data"]["CAM_FRONT"])
+        else:
+            self.tokens = sample_tokens
 
         return self.tokens
 
