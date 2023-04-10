@@ -38,6 +38,7 @@ def main():
     train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
+        image_size=(200, 196),
         label_dir=config.label_dir,
         scene_names=config.train_scenes,
         # transform=train_transform,
@@ -54,6 +55,7 @@ def main():
     validate_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
+        image_size=(200, 196),
         label_dir=config.label_dir,
         scene_names=config.val_scenes,
     )
@@ -64,8 +66,6 @@ def main():
         pin_memory=True,
         shuffle=True,
     )
-
-    network = UNET(in_channels=3, out_channels=14)
 
     this_device = platform.platform()
     if torch.cuda.is_available():
@@ -78,7 +78,7 @@ def main():
         device = "cpu"
 
     print(f"----- Training on {device} -----")
-
+    network = UNET(in_channels=3, out_channels=14)
     loss_fn = nn.BCEWithLogitsLoss().to(device)
     # loss_fn = nn.BCELoss().to(device)
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
@@ -89,6 +89,7 @@ def main():
         log_dir=f"{config.log_dir}/{current_time}",
         validate_loader=validate_loader,
         loss_fn=loss_fn,
+        n_classes=14,
     )
 
     config_log_table = f"""
@@ -125,7 +126,6 @@ def main():
     for epoch in tqdm(range(config.epochs)):
         # print(f"Training epoch {epoch+1}...")
         for batch_idx, batch in enumerate(train_loader):
-
             image, labels, mask = batch
             image = image.to(device)
             labels = labels.type(torch.FloatTensor).to(device)

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from nuscenes_utilities import NUSCENES_CLASS_NAMES
 from matplotlib.cm import get_cmap
 
-from typing import Literal, Callable
+# from typing import Literal, Callable
 import torchmetrics.classification
 
 
@@ -15,10 +15,10 @@ class TensorboardLogger:
         device: str,
         log_dir: str,
         validate_loader: DataLoader,
-        loss_fn: Callable,
+        loss_fn,  # Callable,
         n_classes: int,
-        task: Literal["multiclass", "multilabel"] = "multilabel",
-        iou_average: Literal["micro", "macro", "weighted", "none"] = "macro",
+        task="multilabel",  # Literal["multiclass", "multilabel"] = "multilabel",
+        iou_average="macro",  # Literal["micro", "macro", "weighted", "none"] = "macro",
     ):
         self.device = device
         self.writer = SummaryWriter(log_dir)
@@ -50,7 +50,6 @@ class TensorboardLogger:
         self.num_steps_per_epoch += 1
 
     def log_epoch(self, network: nn.Module, epoch: int):
-
         # Training
         self.writer.add_scalar(
             "Train/avg_loss",
@@ -71,7 +70,6 @@ class TensorboardLogger:
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.validate_loader):
-
                 image, labels, mask = batch
                 image = image.to(self.device)
                 labels = labels.type(torch.FloatTensor).to(self.device)
@@ -81,7 +79,8 @@ class TensorboardLogger:
                 # prediction = prediction.sigmoid()
                 loss = self.loss_fn(prediction, labels).to(self.device)
                 total_loss += loss.item()
-                iou = self.iou_metric(prediction, labels)
+                # iou = self.iou_metric(prediction.IntTensor(), labels)
+                # total_iou += iou
                 num_step += 1
 
         visualise(
@@ -103,7 +102,6 @@ class TensorboardLogger:
 
 
 def colorise(tensor, cmap, vmin=None, vmax=None):
-
     if isinstance(cmap, str):
         cmap = get_cmap(cmap)
 
@@ -126,7 +124,6 @@ def visualise(
     dataset,
     split,
 ):
-
     class_names = NUSCENES_CLASS_NAMES
 
     summary.add_image(split + "/image", image[0], step, dataformats="CHW")
@@ -142,8 +139,8 @@ def evaluate_preds(
     preds: torch.Tensor,
     labels: torch.Tensor,
     n_classes: int,
-    task: Literal["multiclass", "multilabel"],
-    average: Literal["micro", "macro", "weighted", "none"] = "macro",
+    task,  # Literal["multiclass", "multilabel"],
+    average,  # Literal["micro", "macro", "weighted", "none"] = "macro",
 ):
     """Evaluate the predictions for IoU, precision and recall.
 

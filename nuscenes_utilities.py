@@ -56,14 +56,12 @@ def load_map_data(dataroot: str):
 
 
 def load_location_map_data(dataroot: str, location: str):
-
     # Load the NuScenes map object
     nusc_map = NuScenesMap(dataroot, location)
 
     map_data = OrderedDict()
 
     for layer in STATIC_CLASSES:
-
         # Retrieve all data associated with the current layer
         records = getattr(nusc_map, layer)
         polygons = list()
@@ -71,7 +69,6 @@ def load_location_map_data(dataroot: str, location: str):
         # Drivable area records can contain multiple polygons
         if layer == "drivable_area":
             for record in records:
-
                 # Convert each entry in the record into a shapely object
                 for token in record["polygon_tokens"]:
                     poly = nusc_map.extract_polygon(token)
@@ -79,7 +76,6 @@ def load_location_map_data(dataroot: str, location: str):
                         polygons.append(poly)
         else:
             for record in records:
-
                 # Convert each entry in the record into a shapely object
                 poly = nusc_map.extract_polygon(record["polygon_token"])
                 if poly.is_valid:
@@ -103,7 +99,6 @@ def iterate_samples(nuscenes, start_token: str):
 
 
 def load_point_cloud(nuscenes, sample_data):
-
     # Load point cloud
     lidar_path = os.path.join(nuscenes.dataroot, sample_data["filename"])
     pcl = LidarPointCloud.from_file(lidar_path)
@@ -111,7 +106,6 @@ def load_point_cloud(nuscenes, sample_data):
 
 
 def get_sensor_transform(nuscenes, sample_data):
-
     # Load sensor transform data
     sensor = nuscenes.get("calibrated_sensor", sample_data["calibrated_sensor_token"])
     sensor_tfm = make_transform_matrix(sensor)
@@ -159,7 +153,6 @@ def render_polygon(mask, polygon, extents, resolution, value=1):
 
 
 def get_map_masks(nuscenes, map_data, sample_data, extents, resolution):
-
     # Render each layer sequentially
     layers = [
         get_layer_mask(nuscenes, polys, sample_data, extents, resolution)
@@ -170,7 +163,6 @@ def get_map_masks(nuscenes, map_data, sample_data, extents, resolution):
 
 
 def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
-
     # Get the 2D affine transform from bev coords to map coords
     tfm = get_sensor_transform(nuscenes, sample_data)[[0, 1, 3]][:, [0, 2, 3]]
     inv_tfm = np.linalg.inv(tfm)
@@ -187,7 +179,6 @@ def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
 
     # Find all polygons which intersect with the area of interest
     for polygon in polygons.query(map_patch):
-
         polygon = polygons.geometries.take(polygon)
         polygon = polygon.intersection(map_patch)
 
@@ -215,7 +206,6 @@ DETECTION_NAMES = [
 
 
 def get_object_masks(nuscenes, sample_data, extents, resolution):
-
     # Initialize object masks
     nclass = len(DETECTION_NAMES) + 1
     grid_width = int((extents[2] - extents[0]) / resolution)
@@ -227,7 +217,6 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
     inv_tfm = np.linalg.inv(tfm)
 
     for box in nuscenes.get_boxes(sample_data["token"]):
-
         # Get the index of the class
         det_name = category_to_detection_name(box.name)
         if det_name not in DETECTION_NAMES:
@@ -246,7 +235,6 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
 
 
 def get_visible_mask(instrinsics, image_width, extents, resolution):
-
     # Get calibration parameters
     fu, cu = instrinsics[0, 0], instrinsics[0, 2]
 
@@ -260,9 +248,7 @@ def get_visible_mask(instrinsics, image_width, extents, resolution):
 
 
 def render_shapely_polygon(mask, polygon, extents, resolution):
-
     if polygon.geom_type == "Polygon":
-
         # Render exteriors
         render_polygon(mask, polygon.exterior.coords, extents, resolution, 1)
 
@@ -277,7 +263,6 @@ def render_shapely_polygon(mask, polygon, extents, resolution):
 
 
 def get_occlusion_mask(points, extents, resolution):
-
     x1, z1, x2, z2 = extents
 
     # A 'ray' is defined by the ratio between x and z coordinates
@@ -328,7 +313,7 @@ def decode_binary_labels(
     bits = 2 ** np.arange(n_classes, dtype=np.int32)
     bits = bits.reshape(-1, 1, 1)
     encoded_labels = encoded_labels.astype(np.int32)
-    return (encoded_labels & bits) > 0
+    return ((encoded_labels & bits) > 0).astype(int)
 
 
 def flatten_labels(
