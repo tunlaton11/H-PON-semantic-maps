@@ -2,11 +2,16 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 from nuscenes_utilities import NUSCENES_CLASS_NAMES
 from matplotlib.cm import get_cmap
 
 # from typing import Literal, Callable
 import torchmetrics.classification
+import numpy as np
+import matplotlib.pyplot as plt
+
+import torchvision.utils
 
 
 class TensorboardLogger:
@@ -72,31 +77,53 @@ class TensorboardLogger:
             for batch_idx, batch in enumerate(self.validate_loader):
                 image, labels, mask = batch
                 image = image.to(self.device)
-                labels = labels.type(torch.FloatTensor).to(self.device)
+
+                if self.loss_fn.__class__.__name__ == "CrossEntropyLoss":
+                    labels = labels.long().to(self.device)
+
+                else:
+                    labels = labels.type(torch.FloatTensor).to(self.device)
+
                 mask = mask.to(self.device)
 
                 prediction = network(image).to(self.device)
-                # prediction = prediction.sigmoid()
+
                 loss = self.loss_fn(prediction, labels).to(self.device)
                 total_loss += loss.item()
                 # iou = self.iou_metric(prediction.IntTensor(), labels)
                 # total_iou += iou
                 num_step += 1
 
-        visualise(
-            self.writer, image, prediction, labels, mask, epoch, "nuscenes", split="val"
-        )
+        if self.validate_loader.dataset.flatten_labels:  # multiclass
+            visualize_muticlass(
+                self.writer,
+                prediction[-1],
+                self.training_step,
+                "Validate",
+            )
+
+        else:
+            visualise(
+                self.writer,
+                image,
+                prediction,
+                labels,
+                mask,
+                epoch,
+                "nuscenes",
+                split="Validate",
+            )
 
         self.writer.add_scalar(
             "Validate/avg_loss",
             total_loss / num_step,
             self.training_step,
         )
-        self.writer.add_scalar(
-            "Validate/avg_iou",
-            total_iou / num_step,
-            self.training_step,
-        )
+        # self.writer.add_scalar(
+        #     "Validate/avg_iou",
+        #     total_iou / num_step,
+        #     self.training_step,
+        # )
 
         network.train()  # set network's behavior to training mode
 
@@ -117,7 +144,7 @@ def colorise(tensor, cmap, vmin=None, vmax=None):
 def visualise(
     summary: SummaryWriter,
     image,
-    scores,
+    pred,
     labels,
     mask,
     step,
@@ -126,13 +153,40 @@ def visualise(
 ):
     class_names = NUSCENES_CLASS_NAMES
 
+    colorised_pred = torch.from_numpy(colorise(pred[0], "coolwarm", 0, 1)).permute(
+        0, 3, 1, 2
+    )
+    colorised_gt = torch.from_numpy(colorise(labels[0], "coolwarm", 0, 1)).permute(
+        0, 3, 1, 2
+    )
+
+    gt_grid = torchvision.utils.make_grid(colorised_gt)
+    pred_grid = torchvision.utils.make_grid(colorised_pred)
+
     summary.add_image(split + "/image", image[0], step, dataformats="CHW")
     summary.add_image(
-        split + "/pred", colorise(scores[0], "coolwarm", 0, 1), step, dataformats="NHWC"
+        split + "/predicted",
+        pred_grid,
+        step,
     )
-    summary.add_image(
-        split + "/gt", colorise(labels[0], "coolwarm", 0, 1), step, dataformats="NHWC"
+    summary.add_image(split + "/gt", gt_grid, step)
+
+
+def visualize_muticlass(
+    writer: SummaryWriter,
+    pred,
+    step,
+    split,
+):
+    pred = torch.argmax(pred, dim=0)
+
+    pred = F.one_hot(pred, num_classes=15).permute((2, 0, 1))
+    colorised_pred = torch.from_numpy(colorise(pred, "coolwarm", 0, 1)).permute(
+        0, 3, 1, 2
     )
+    img_grid = torchvision.utils.make_grid(colorised_pred[1:])
+
+    writer.add_image(f"{split}/predicted", img_grid, step)
 
 
 def evaluate_preds(
