@@ -41,6 +41,7 @@ def main():
         image_size=(200, 196),
         label_dir=config.label_dir,
         scene_names=config.train_scenes,
+        # flatten_labels=True
         # transform=train_transform,
     )
 
@@ -58,6 +59,7 @@ def main():
         image_size=(200, 196),
         label_dir=config.label_dir,
         scene_names=config.val_scenes,
+        # flatten_labels=True,
     )
     validate_loader = DataLoader(
         validate_dataset,
@@ -78,9 +80,16 @@ def main():
         device = "cpu"
 
     print(f"----- Training on {device} -----")
-    network = UNET(in_channels=3, out_channels=14)
-    loss_fn = nn.BCEWithLogitsLoss().to(device)
-    # loss_fn = nn.BCELoss().to(device)
+
+    if train_dataset.flatten_labels:
+        loss_fn = nn.CrossEntropyLoss().to(device)
+        out_channels = 15
+    else:
+        loss_fn = nn.BCEWithLogitsLoss().to(device)
+        out_channels = 14
+
+    network = UNET(in_channels=3, out_channels=out_channels)
+
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
     current_time = time.time()
@@ -124,15 +133,19 @@ def main():
     network.to(device)
 
     for epoch in tqdm(range(config.epochs)):
-        # print(f"Training epoch {epoch+1}...")
         for batch_idx, batch in enumerate(train_loader):
             image, labels, mask = batch
             image = image.to(device)
-            labels = labels.type(torch.FloatTensor).to(device)
+
+            if loss_fn.__class__.__name__ == "CrossEntropyLoss":
+                labels = labels.long().to(device)
+
+            else:
+                labels = labels.type(torch.FloatTensor).to(device)
+
             mask = mask.to(device)
 
             prediction = network(image).to(device)
-            # prediction = prediction.sigmoid()
 
             # compute loss
             loss = loss_fn(prediction, labels).to(device)
