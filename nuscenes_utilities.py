@@ -188,7 +188,7 @@ def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
         # Render the polygon to the mask
         render_shapely_polygon(mask, polygon, extents, resolution)
 
-    return mask.astype(np.bool)
+    return mask.astype(bool)
 
 
 DETECTION_NAMES = [
@@ -231,7 +231,7 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
         # Render the rotated bounding box to the mask
         render_polygon(masks[class_id], local_bbox, extents, resolution)
 
-    return masks.astype(np.bool)
+    return masks.astype(bool)
 
 
 def get_visible_mask(instrinsics, image_width, extents, resolution):
