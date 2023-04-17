@@ -36,7 +36,9 @@ class NuScenesDataset(Dataset):
         label_dir : str
             Path of label directory.
         sample_tokens : list of str, optional
-            To-do!!
+            List of sample (frame) tokens for the dataset, If None,
+            the dataset includes all samples. Do not set both
+            `sample_tokens` and `scene_names` at the same time.
         scene_names : list of str, optional
             List of scene names for the dataset. If None, the dataset
             includes all scenes.
@@ -68,7 +70,7 @@ class NuScenesDataset(Dataset):
         self.transform = transform
         self.image_transform = image_transform
         self.flatten_labels = flatten_labels
-        self.get_tokens(scene_names)
+        self.get_tokens(sample_tokens, scene_names)
 
     def get_tokens(
         self,
