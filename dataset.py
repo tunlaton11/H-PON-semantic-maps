@@ -20,7 +20,7 @@ class NuScenesDataset(Dataset):
         label_dir: str,
         sample_tokens: Iterable[str] = None,
         scene_names: Iterable[str] = None,
-        image_size: Tuple[int, int] = (200, 196),
+        image_size: Tuple[int, int] = None,
         transform: A.Compose = None,
         image_transform: A.Compose = None,
         flatten_labels=False,
@@ -82,7 +82,6 @@ class NuScenesDataset(Dataset):
         if sample_tokens is None:
             # Iterate over scenes
             for scene in self.nuscenes.scene:
-
                 # # Ignore scenes which don't belong to the current split
                 if scene_names is not None and scene["name"] not in scene_names:
                     continue
@@ -128,7 +127,6 @@ class NuScenesDataset(Dataset):
         )
 
     def load_image(self, token: str):
-
         # Load image
         image = cv2.imread(self.nuscenes.get_sample_data_path(token))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -140,7 +138,6 @@ class NuScenesDataset(Dataset):
         return image
 
     def load_labels(self, token: str):
-
         # Load label image
         label_path = os.path.join(self.label_dir, token + ".png")
         encoded_labels = cv2.imread(label_path, cv2.IMREAD_UNCHANGED)
@@ -154,7 +151,6 @@ class NuScenesDataset(Dataset):
 
 
 if __name__ == "__main__":
-
     dataset = NuScenesDataset(
         nuscenes_dir="nuscenes",
         nuscenes_version="v1.0-mini",
