@@ -20,7 +20,7 @@ class TensorboardLogger:
         device: str,
         log_dir: str,
         validate_loader: DataLoader,
-        loss_fn,  # Callable,
+        criterion,  # Callable,
         n_classes: int,
         task="multilabel",  # Literal["multiclass", "multilabel"] = "multilabel",
         iou_average="macro",  # Literal["micro", "macro", "weighted", "none"] = "macro",
@@ -33,7 +33,7 @@ class TensorboardLogger:
         self.num_steps_per_epoch = 0
 
         self.validate_loader = validate_loader
-        self.loss_fn = loss_fn
+        self.criterion = criterion
 
         if task == "multiclass":
             num_classes = n_classes
@@ -47,7 +47,7 @@ class TensorboardLogger:
             num_classes=num_classes,
             num_labels=num_labels,
             average=iou_average,
-        )
+        ).to(device)
 
     def log_step(self, loss: float):
         self.training_loss += loss
@@ -75,29 +75,29 @@ class TensorboardLogger:
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.validate_loader):
-                image, labels, mask = batch
-                image = image.to(self.device)
+                images, labels, masks = batch
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                masks = masks.to(self.device)
 
-                if self.loss_fn.__class__.__name__ == "CrossEntropyLoss":
-                    labels = labels.long().to(self.device)
+                predictions = network(images).to(self.device)
 
+                if self.criterion.__class__.__name__ == "CrossEntropyLoss":
+                    # multiclass
+                    loss = self.criterion(predictions, labels.long()).to(self.device)
                 else:
-                    labels = labels.type(torch.FloatTensor).to(self.device)
+                    # multilabel
+                    loss = self.criterion(predictions, labels.float()).to(self.device)
 
-                mask = mask.to(self.device)
-
-                prediction = network(image).to(self.device)
-
-                loss = self.loss_fn(prediction, labels).to(self.device)
                 total_loss += loss.item()
-                # iou = self.iou_metric(prediction.IntTensor(), labels)
-                # total_iou += iou
+                iou = self.iou_metric(predictions, labels)
+                total_iou += iou
                 num_step += 1
 
         if self.validate_loader.dataset.flatten_labels:  # multiclass
             visualize_muticlass(
                 self.writer,
-                prediction[-1],
+                predictions[-1],
                 self.training_step,
                 "Validate",
             )
@@ -105,10 +105,10 @@ class TensorboardLogger:
         else:
             visualise(
                 self.writer,
-                image,
-                prediction,
+                images,
+                predictions,
                 labels,
-                mask,
+                masks,
                 epoch,
                 "nuscenes",
                 split="Validate",
@@ -119,11 +119,11 @@ class TensorboardLogger:
             total_loss / num_step,
             self.training_step,
         )
-        # self.writer.add_scalar(
-        #     "Validate/avg_iou",
-        #     total_iou / num_step,
-        #     self.training_step,
-        # )
+        self.writer.add_scalar(
+            "Validate/avg_iou",
+            total_iou / num_step,
+            self.training_step,
+        )
 
         network.train()  # set network's behavior to training mode
 
