@@ -103,6 +103,7 @@ class NuScenesDataset(Dataset):
         token = self.tokens[index]
         image = self.load_image(token)
         labels, mask = self.load_labels(token)
+        calib = self.load_calib(token)
 
         if self.flatten_labels:
             labels = nusc_utils.flatten_labels(labels)
@@ -124,6 +125,7 @@ class NuScenesDataset(Dataset):
             to_tensor(image),
             torch.from_numpy(labels),
             torch.from_numpy(mask),
+            calib
         )
 
     def load_image(self, token: str):
@@ -148,6 +150,20 @@ class NuScenesDataset(Dataset):
         labels, mask = labels[:-1], ~labels[-1]
 
         return labels, mask
+
+    
+    def load_calib(self, token):
+
+        # Load camera intrinsics matrix
+        sample_data = self.nuscenes.get('sample_data', token)
+        sensor = self.nuscenes.get(
+            'calibrated_sensor', sample_data['calibrated_sensor_token'])
+        intrinsics = torch.tensor(sensor['camera_intrinsic'])
+
+        # Scale calibration matrix to account for image downsampling
+        intrinsics[0] *= self.image_size[0] / sample_data['width']
+        intrinsics[1] *= self.image_size[1] / sample_data['height']
+        return intrinsics
 
 
 if __name__ == "__main__":
