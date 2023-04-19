@@ -1,7 +1,7 @@
 nuscenes_dir: nuscenes
 nuscenes_version: v1.0-mini
 label_dir: labels
-log_dir: logs
+log_dir: runs
 
 # Number of epochs
 epochs: 20
