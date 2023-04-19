@@ -92,7 +92,7 @@ def main():
     current_time = time.time()
     logger = TensorboardLogger(
         device,
-        log_dir=f"{config.log_dir}/{current_time}",
+        log_dir=f"{config.log_dir}/unet_multilabel_{current_time}",
         validate_loader=validate_loader,
         criterion=criterion,
         n_classes=14,
