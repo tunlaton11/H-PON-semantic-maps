@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from nuscenes_utilities import NUSCENES_CLASS_NAMES
 from matplotlib.cm import get_cmap
+from matplotlib.colors import ListedColormap
 
 # from typing import Literal, Callable
 import torchmetrics.classification
@@ -75,12 +76,14 @@ class TensorboardLogger:
 
         with torch.no_grad():
             for batch_idx, batch in enumerate(self.validate_loader):
-                images, labels, masks = batch
+                images, labels, masks, calibs = batch
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 masks = masks.to(self.device)
+                calibs = calibs.to(self.device)
 
-                predictions = network(images).to(self.device)
+                # predictions = network(images).to(self.device)
+                predictions = network(images, calibs).to(self.device)
 
                 if self.criterion.__class__.__name__ == "CrossEntropyLoss":
                     # multiclass
@@ -97,7 +100,9 @@ class TensorboardLogger:
         if self.validate_loader.dataset.flatten_labels:  # multiclass
             visualize_muticlass(
                 self.writer,
+                images,
                 predictions[-1],
+                labels[-1],
                 self.training_step,
                 "Validate",
             )
@@ -128,17 +133,32 @@ class TensorboardLogger:
         network.train()  # set network's behavior to training mode
 
 
-def colorise(tensor, cmap, vmin=None, vmax=None):
-    if isinstance(cmap, str):
-        cmap = get_cmap(cmap)
+def colorise(tensor, cmap, vmin=None, vmax=None, flatten=False):
+    if flatten:
+        cmap = get_cmap(cmap, 20)
+        cmap_colors = cmap(np.linspace(0, 1, 20))[:14]
+        cmap = ListedColormap(cmap_colors)
 
-    tensor = tensor.detach().cpu().float()
+        class_prediction_color = cmap(tensor.cpu())
+        class_prediction_color = class_prediction_color[..., :3]
 
-    vmin = float(tensor.min()) if vmin is None else vmin
-    vmax = float(tensor.max()) if vmax is None else vmax
+        class_prediction_color = (
+            torch.from_numpy(class_prediction_color).permute(2, 0, 1).unsqueeze(0)
+        )
 
-    tensor = (tensor - vmin) / (vmax - vmin)
-    return cmap(tensor.numpy())[..., :3]
+        return class_prediction_color
+
+    else:
+        if isinstance(cmap, str):
+            cmap = get_cmap(cmap)
+
+        tensor = tensor.detach().cpu().float()
+
+        vmin = float(tensor.min()) if vmin is None else vmin
+        vmax = float(tensor.max()) if vmax is None else vmax
+
+        tensor = (tensor - vmin) / (vmax - vmin)
+        return cmap(tensor.numpy())[..., :3]
 
 
 def visualise(
@@ -174,18 +194,41 @@ def visualise(
 
 def visualize_muticlass(
     writer: SummaryWriter,
+    image,
     pred,
+    labels,
     step,
     split,
 ):
+    gt_to_colorise = labels
+
     pred = torch.argmax(pred, dim=0)
+    pred_to_colorise = pred
 
     pred = F.one_hot(pred, num_classes=15).permute((2, 0, 1))
+
+    labels = F.one_hot(labels, num_classes=15).permute((2, 0, 1))
+
     colorised_pred = torch.from_numpy(colorise(pred, "coolwarm", 0, 1)).permute(
         0, 3, 1, 2
     )
+
+    colorised_gt = torch.from_numpy(colorise(labels, "coolwarm", 0, 1)).permute(
+        0, 3, 1, 2
+    )
+
+    colorised_flatten_gt = colorise(gt_to_colorise, "viridis", flatten=True)
+    colorised_flatten_pred = colorise(pred_to_colorise, "viridis", flatten=True)
+
+    # concat with colorised flatten
+    colorised_pred = torch.cat((colorised_pred, colorised_flatten_pred), dim=0)
+    colorised_gt = torch.cat((colorised_gt, colorised_flatten_gt), dim=0)
+
+    gt_grid = torchvision.utils.make_grid(colorised_gt[1:])
     img_grid = torchvision.utils.make_grid(colorised_pred[1:])
 
+    writer.add_image(f"{split}/image", image[0], step)
+    writer.add_image(f"{split}/gt", gt_grid, step)
     writer.add_image(f"{split}/predicted", img_grid, step)
 
 
