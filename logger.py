@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from nuscenes_utilities import NUSCENES_CLASS_NAMES
+from nuscenes_utilities import NUSCENES_CLASS_NAMES, flatten_labels
 from matplotlib.cm import get_cmap
 from matplotlib.colors import ListedColormap
 
@@ -36,6 +36,7 @@ class TensorboardLogger:
         self.validate_loader = validate_loader
         self.criterion = criterion
 
+        self.task = task
         if task == "multiclass":
             num_classes = n_classes
             num_labels = None
@@ -81,9 +82,11 @@ class TensorboardLogger:
                 labels = labels.to(self.device)
                 masks = masks.to(self.device)
                 calibs = calibs.to(self.device)
-
                 # predictions = network(images).to(self.device)
                 predictions = network(images, calibs).to(self.device)
+
+                masks_to_ignore = (masks == -1).long()  # makes mask (-2, -1) to (0, 1)
+                masks_to_ignore = masks_to_ignore.unsqueeze(1).repeat(1, 14, 1, 1)
 
                 if self.criterion.__class__.__name__ == "CrossEntropyLoss":
                     # multiclass
@@ -103,7 +106,7 @@ class TensorboardLogger:
                 images,
                 predictions[-1],
                 labels[-1],
-                self.training_step,
+                epoch,
                 "Validate",
             )
 
@@ -111,9 +114,9 @@ class TensorboardLogger:
             visualise(
                 self.writer,
                 images,
-                predictions,
-                labels,
-                masks,
+                predictions[-1],
+                labels[-1],
+                masks[-1],
                 epoch,
                 "nuscenes",
                 split="Validate",
@@ -135,8 +138,8 @@ class TensorboardLogger:
 
 def colorise(tensor, cmap, vmin=None, vmax=None, flatten=False):
     if flatten:
-        cmap = get_cmap(cmap, 20)
-        cmap_colors = cmap(np.linspace(0, 1, 20))[:14]
+        cmap = get_cmap(cmap, 100)
+        cmap_colors = cmap(np.linspace(0, 1, 15))[:14]
         cmap = ListedColormap(cmap_colors)
 
         class_prediction_color = cmap(tensor.cpu())
@@ -171,19 +174,40 @@ def visualise(
     dataset,
     split,
 ):
-    class_names = NUSCENES_CLASS_NAMES
+    # class_names = NUSCENES_CLASS_NAMES
 
-    colorised_pred = torch.from_numpy(colorise(pred[0], "coolwarm", 0, 1)).permute(
+    colorised_pred = torch.from_numpy(
+        colorise(pred.sigmoid(), "coolwarm", 0, 1)
+    ).permute(0, 3, 1, 2)
+    colorised_gt = torch.from_numpy(colorise(labels, "coolwarm", 0, 1)).permute(
         0, 3, 1, 2
     )
-    colorised_gt = torch.from_numpy(colorise(labels[0], "coolwarm", 0, 1)).permute(
-        0, 3, 1, 2
+
+    pred = (pred.sigmoid() >= 0.5).long()
+
+    colorised_flatten_gt = colorise(
+        flatten_labels(labels.cpu()),
+        "nipy_spectral",
+        flatten=True,
+    )
+    colorised_flatten_pred = colorise(
+        flatten_labels(pred.cpu()), "nipy_spectral", flatten=True
     )
 
-    gt_grid = torchvision.utils.make_grid(colorised_gt)
-    pred_grid = torchvision.utils.make_grid(colorised_pred)
+    mask = (mask.cpu() == -1).long()
 
-    summary.add_image(split + "/image", image[0], step, dataformats="CHW")
+    gt_with_mask = colorised_flatten_gt * mask
+    pred_with_mask = colorised_flatten_pred * mask
+
+    colorised_pred = torch.cat(
+        (colorised_pred, colorised_flatten_pred, pred_with_mask), dim=0
+    )
+    colorised_gt = torch.cat((colorised_gt, colorised_flatten_gt, gt_with_mask), dim=0)
+
+    gt_grid = torchvision.utils.make_grid(colorised_gt, 6, 3)
+    pred_grid = torchvision.utils.make_grid(colorised_pred, 6, 3)
+
+    summary.add_image(split + "/image", image[-1], step, dataformats="CHW")
     summary.add_image(
         split + "/predicted",
         pred_grid,
@@ -202,23 +226,21 @@ def visualize_muticlass(
 ):
     gt_to_colorise = labels
 
-    pred = torch.argmax(pred, dim=0)
-    pred_to_colorise = pred
-
-    pred = F.one_hot(pred, num_classes=15).permute((2, 0, 1))
-
     labels = F.one_hot(labels, num_classes=15).permute((2, 0, 1))
 
-    colorised_pred = torch.from_numpy(colorise(pred, "coolwarm", 0, 1)).permute(
-        0, 3, 1, 2
-    )
-
+    colorised_pred = torch.from_numpy(
+        colorise(pred.softmax(dim=0), "coolwarm", 0, 1)
+    ).permute(0, 3, 1, 2)
     colorised_gt = torch.from_numpy(colorise(labels, "coolwarm", 0, 1)).permute(
         0, 3, 1, 2
     )
 
-    colorised_flatten_gt = colorise(gt_to_colorise, "viridis", flatten=True)
-    colorised_flatten_pred = colorise(pred_to_colorise, "viridis", flatten=True)
+    pred = (pred.softmax(dim=0) >= 0.5).long()
+
+    colorised_flatten_gt = colorise(gt_to_colorise.cpu(), "viridis", flatten=True)
+    colorised_flatten_pred = colorise(
+        flatten_labels(pred.cpu()), "viridis", flatten=True
+    )
 
     # concat with colorised flatten
     colorised_pred = torch.cat((colorised_pred, colorised_flatten_pred), dim=0)
@@ -227,7 +249,7 @@ def visualize_muticlass(
     gt_grid = torchvision.utils.make_grid(colorised_gt[1:])
     img_grid = torchvision.utils.make_grid(colorised_pred[1:])
 
-    writer.add_image(f"{split}/image", image[0], step)
+    writer.add_image(f"{split}/image", image[-1], step)
     writer.add_image(f"{split}/gt", gt_grid, step)
     writer.add_image(f"{split}/predicted", img_grid, step)
 
