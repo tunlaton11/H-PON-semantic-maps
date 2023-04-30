@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append("..")
+
 from configs.config_utilities import load_config
 from dataset import NuScenesDataset
 from model import UNET
@@ -17,6 +22,8 @@ from tqdm import tqdm
 
 import time
 from logger import TensorboardLogger
+
+os.chdir("..")
 
 
 def main():
@@ -130,7 +137,7 @@ def main():
 
     for epoch in tqdm(range(config.epochs)):
         for batch_idx, batch in enumerate(train_loader):
-            image, labels, mask = batch
+            image, labels, mask, _ = batch
             image = image.to(device)
 
             labels = labels.type(torch.FloatTensor).to(device)

@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append("..")
+
 from configs.config_utilities import load_config
 from dataset import NuScenesDataset
 from model import UNET
@@ -17,6 +22,8 @@ from tqdm import tqdm
 
 import time
 from logger import TensorboardLogger
+
+os.chdir("..")
 
 
 def main():
