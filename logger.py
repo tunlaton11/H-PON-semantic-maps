@@ -48,7 +48,13 @@ class TensorboardLogger:
             task=task,
             num_classes=num_classes,
             num_labels=num_labels,
-            average=iou_average,
+            average="macro",
+        ).to(device)
+        self.iou_metric_by_class = torchmetrics.classification.JaccardIndex(
+            task=task,
+            num_classes=num_classes,
+            num_labels=num_labels,
+            average="none",
         ).to(device)
 
     def log_step(self, loss: float):
@@ -73,6 +79,7 @@ class TensorboardLogger:
 
         total_loss = 0
         total_iou = 0
+        total_iou_by_class = torch.zeros(14)
         num_step = 0
 
         with torch.no_grad():
@@ -97,7 +104,9 @@ class TensorboardLogger:
 
                 total_loss += loss.item()
                 iou = self.iou_metric(predictions, labels)
+                iou_by_class = self.iou_metric_by_class(predictions, labels)
                 total_iou += iou
+                total_iou_by_class += iou_by_class
                 num_step += 1
 
         if self.validate_loader.dataset.flatten_labels:  # multiclass
@@ -120,6 +129,13 @@ class TensorboardLogger:
                 epoch,
                 "nuscenes",
                 split="Validate",
+            )
+        
+        for class_iou, class_name in zip(total_iou_by_class, NUSCENES_CLASS_NAMES):
+            self.writer.add_scalar(
+                f"Validate/iou/{class_name}",
+                class_iou / num_step,
+                self.training_step,
             )
 
         self.writer.add_scalar(
