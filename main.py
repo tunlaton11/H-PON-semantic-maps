@@ -108,16 +108,17 @@ def main():
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    is_load_checkpoint = False
+    is_load_checkpoint = True
 
     if is_load_checkpoint:
-        log_dir = "runs/PON_multilabel_1682956035.5162184"
-        checkpoint_path = "checkpoints/PON_multilabel_fedora_0005_1682956035.5162184.pt"
+        log_dir = "runs\PON_multilabel_1682960034.69305"
+        current_time = "1682960034.69305"
+        checkpoint_path = "checkpoints\PON_multilabel_1682960034.69305_00001.pt"
         checkpoint = torch.load(checkpoint_path)
         network.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         initial_step = checkpoint["step"]
-        initial_epoch = checkpoint["epoch"]
+        initial_epoch = checkpoint["epoch"] + 1
         epochs = initial_epoch + config.epochs
     else:
         current_time = time.time()
@@ -166,8 +167,9 @@ def main():
         logger.writer.add_text(
             "Experiment Configurations", config_log_table, global_step=0
         )
-
+    
     for epoch in tqdm(range(initial_epoch, epochs)):
+        print(epoch)
         for batch_idx, batch in enumerate(train_loader):
             images, labels, masks, calibs = batch
             images = images.to(device)
@@ -201,9 +203,9 @@ def main():
     os.makedirs(checkpoint_dir, exist_ok=True)
     checkpoint_path = (
         config.checkpoint_dir
-        + f"/PON_{task}_{platform.node()}_"
-        + f"{str(epoch).zfill(4)}_{current_time}.pt"
+        + f"/PON_{task}_{current_time}_{str(epoch).zfill(5)}.pt"
     )
+    print('outside loop', epoch)
     torch.save(
         dict(
             epoch=epoch,

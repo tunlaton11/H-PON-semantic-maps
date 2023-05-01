@@ -68,7 +68,7 @@ class TensorboardLogger:
         self.writer.add_scalar(
             "Train/avg_loss",
             self.training_loss / self.num_steps_per_epoch,
-            self.training_step,
+            epoch,
         )
 
         self.training_loss = 0
