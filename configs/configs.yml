@@ -2,9 +2,10 @@ nuscenes_dir: nuscenes
 nuscenes_version: v1.0-mini
 label_dir: labels
 log_dir: runs
+checkpoint_dir: checkpoints
 
 # Number of epochs
-epochs: 200
+epochs: 1
 
 # Number of examples per mini-batch
 batch_size: 3

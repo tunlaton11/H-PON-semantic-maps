@@ -1,7 +1,7 @@
 from configs.config_utilities import load_config
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 
-from models.pyramid import build_pyramid_occupancy_network, DefaultConfig
+from models.pyramid import build_pyramid_occupancy_network
 from dataset import NuScenesDataset
 from logger import TensorboardLogger
 
@@ -11,6 +11,7 @@ import torch.optim as optim
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
+import os
 import platform
 import re
 import time
@@ -26,7 +27,19 @@ def main():
     train_transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            A.Rotate(limit=20, p=0.3),
+            # A.Rotate(limit=20, p=0.3),
+        ]
+    )
+
+    train_image_transform = A.Compose(
+        [
+            A.ColorJitter(
+                brightness=0.2,
+                contrast=0.2,
+                saturation=0.2,
+                hue=0.2,
+                p=0.25,
+            ),
             A.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
@@ -43,7 +56,8 @@ def main():
         # scene_names=config.train_scenes,
         image_size=(200, 196),
         flatten_labels=(config.method_type == "multiclass"),
-        image_transform=train_transform,
+        transform=train_transform,
+        image_transform=train_image_transform,
     )
 
     train_loader = DataLoader(
@@ -163,6 +177,22 @@ def main():
             logger.log_step(loss=loss.item())
 
         logger.log_epoch(network, epoch)
+
+    checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_path = (
+        config.checkpoint_dir
+        + f"/PON_{task}_{platform.node()}_"
+        + f"{str(epoch).zfill(4)}_{current_time}.pt"
+    )
+    torch.save(
+        dict(
+            epoch=epoch,
+            model_state_dict=network.state_dict(),
+            optimizer_state_dict=optimizer.state_dict(),
+        ),
+        checkpoint_path,
+    )
 
 
 if __name__ == "__main__":
