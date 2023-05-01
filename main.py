@@ -108,22 +108,21 @@ def main():
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-
-    is_load_checkpoint = True
+    is_load_checkpoint = False
 
     if is_load_checkpoint:
-        log_dir=""
-        checkpoint_path = ""
+        log_dir = "runs/PON_multilabel_1682956035.5162184"
+        checkpoint_path = "checkpoints/PON_multilabel_fedora_0005_1682956035.5162184.pt"
         checkpoint = torch.load(checkpoint_path)
-        network.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        initial_step = checkpoint['step']
-        initial_epoch = checkpoint['epoch']
+        network.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        initial_step = checkpoint["step"]
+        initial_epoch = checkpoint["epoch"]
         epochs = initial_epoch + config.epochs
     else:
         current_time = time.time()
-        log_dir=f"{config.log_dir}/PON_{task}_{current_time}"
-        initial_step=0
+        log_dir = f"{config.log_dir}/PON_{task}_{current_time}"
+        initial_step = 0
         initial_epoch = 0
         epochs = config.epochs
 
@@ -164,8 +163,9 @@ def main():
                 </tr>
             </table>
         """
-        logger.writer.add_text("Experiment Configurations", config_log_table, global_step=0)
-
+        logger.writer.add_text(
+            "Experiment Configurations", config_log_table, global_step=0
+        )
 
     for epoch in tqdm(range(initial_epoch, epochs)):
         for batch_idx, batch in enumerate(train_loader):
@@ -207,6 +207,7 @@ def main():
     torch.save(
         dict(
             epoch=epoch,
+            step=logger.training_step,
             model_state_dict=network.state_dict(),
             optimizer_state_dict=optimizer.state_dict(),
         ),
