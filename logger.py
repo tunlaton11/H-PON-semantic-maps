@@ -23,13 +23,14 @@ class TensorboardLogger:
         validate_loader: DataLoader,
         criterion,  # Callable,
         n_classes: int,
+        initial_step: int = 0,
         task="multilabel",  # Literal["multiclass", "multilabel"] = "multilabel",
         iou_average="macro",  # Literal["micro", "macro", "weighted", "none"] = "macro",
     ):
         self.device = device
         self.writer = SummaryWriter(log_dir)
 
-        self.training_step = 0
+        self.training_step = initial_step
         self.training_loss = 0
         self.num_steps_per_epoch = 0
 
@@ -79,7 +80,7 @@ class TensorboardLogger:
 
         total_loss = 0
         total_iou = 0
-        total_iou_by_class = torch.zeros(14)
+        total_iou_by_class = torch.zeros(14).to(self.device)
         num_step = 0
 
         with torch.no_grad():
@@ -130,23 +131,23 @@ class TensorboardLogger:
                 "nuscenes",
                 split="Validate",
             )
-        
+
         for class_iou, class_name in zip(total_iou_by_class, NUSCENES_CLASS_NAMES):
             self.writer.add_scalar(
                 f"Validate/iou/{class_name}",
                 class_iou / num_step,
-                self.training_step,
+                epoch,
             )
 
         self.writer.add_scalar(
             "Validate/avg_loss",
             total_loss / num_step,
-            self.training_step,
+            epoch,
         )
         self.writer.add_scalar(
             "Validate/avg_iou",
             total_iou / num_step,
-            self.training_step,
+            epoch,
         )
 
         network.train()  # set network's behavior to training mode
