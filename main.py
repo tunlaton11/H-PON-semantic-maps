@@ -108,47 +108,66 @@ def main():
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    current_time = time.time()
+
+    is_load_checkpoint = True
+
+    if is_load_checkpoint:
+        log_dir=""
+        checkpoint_path = ""
+        checkpoint = torch.load(checkpoint_path)
+        network.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        initial_step = checkpoint['step']
+        initial_epoch = checkpoint['epoch']
+        epochs = initial_epoch + config.epochs
+    else:
+        current_time = time.time()
+        log_dir=f"{config.log_dir}/PON_{task}_{current_time}"
+        initial_step=0
+        initial_epoch = 0
+        epochs = config.epochs
 
     logger = TensorboardLogger(
         device,
-        log_dir=f"{config.log_dir}/PON_{task}_{current_time}",
+        log_dir=log_dir,
         validate_loader=validate_loader,
         criterion=criterion,
         n_classes=num_class,
         task=task,
+        initial_step=initial_step,
     )
 
-    config_log_table = f"""
-        <table>
-            <tr>
-                <th>Nuscenes Version</th>
-                <th>Is augmentation</th>
-                <th>Batch Size</th>
-                <th>Num Workers</th>
-                <th>Learning Rate</th>
-                <th>Number of epochs</th>
-                <th>Device</th>
-                <th>Loss function</th>
-                <th>Optimizer</th>
-            </tr>
-            <tr>
-                <td>{config.nuscenes_version}</td>
-                <td>{train_dataset.image_transform is not None}</td>
-                <td>{config.batch_size}</td>
-                <td>{config.num_workers}</td>
-                <td>{config.lr}</td>
-                <td>{config.epochs}</td>
-                <td>{device}</td>
-                <td>{criterion.__class__.__name__}</td>
-                <td>{optimizer.__class__.__name__}</td>
-            </tr>
-        </table>
-    """
+    if not is_load_checkpoint:
+        config_log_table = f"""
+            <table>
+                <tr>
+                    <th>Nuscenes Version</th>
+                    <th>Is augmentation</th>
+                    <th>Batch Size</th>
+                    <th>Num Workers</th>
+                    <th>Learning Rate</th>
+                    <th>Number of epochs</th>
+                    <th>Device</th>
+                    <th>Loss function</th>
+                    <th>Optimizer</th>
+                </tr>
+                <tr>
+                    <td>{config.nuscenes_version}</td>
+                    <td>{train_dataset.image_transform is not None}</td>
+                    <td>{config.batch_size}</td>
+                    <td>{config.num_workers}</td>
+                    <td>{config.lr}</td>
+                    <td>{config.epochs}</td>
+                    <td>{device}</td>
+                    <td>{criterion.__class__.__name__}</td>
+                    <td>{optimizer.__class__.__name__}</td>
+                </tr>
+            </table>
+        """
+        logger.writer.add_text("Experiment Configurations", config_log_table, global_step=0)
 
-    logger.writer.add_text("Experiment Configurations", config_log_table, global_step=0)
 
-    for epoch in tqdm(range(config.epochs)):
+    for epoch in tqdm(range(initial_epoch, epochs)):
         for batch_idx, batch in enumerate(train_loader):
             images, labels, masks, calibs = batch
             images = images.to(device)
