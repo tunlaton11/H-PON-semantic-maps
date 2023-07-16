@@ -57,7 +57,7 @@ def main():
     train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
-        image_size=(200, 196),
+        image_size=(200, 112),
         label_dir=config.label_dir,
         sample_tokens=config.train_tokens,
         transform=train_transform,
@@ -75,7 +75,7 @@ def main():
     validate_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
-        image_size=(200, 196),
+        image_size=(200, 112),
         label_dir=config.label_dir,
         sample_tokens=config.val_tokens,
     )
@@ -108,7 +108,8 @@ def main():
     current_time = time.time()
     logger = TensorboardLogger(
         device,
-        log_dir=f"{config.log_dir}/unet_multilabel_{current_time}",
+        # log_dir=f"{config.log_dir}/unet_ipm_multilabel_{current_time}",
+        log_dir=f"{config.log_dir}/unet_ipm_multilabel_{current_time}",
         validate_loader=validate_loader,
         criterion=criterion,
         n_classes=14,
@@ -148,11 +149,18 @@ def main():
         for batch_idx, batch in enumerate(train_loader):
             images, labels, mask, calibs = batch
 
-            images = images.to(device)
             labels = labels.type(torch.FloatTensor).to(device)
             mask = mask.to(device)
 
-            prediction = network(images).to(device)
+            bev_images = ipm_transform(
+                images,
+                calibs,
+                config.map_extents,
+                config.map_resolution,
+                car_height=1.562,
+            )
+            bev_images = bev_images.to(device)
+            prediction = network(bev_images).to(device)
 
             # compute loss
             loss = criterion(prediction, labels).to(device)
@@ -174,7 +182,7 @@ def main():
             os.makedirs(checkpoint_dir, exist_ok=True)
 
             checkpoint_path = (
-                config.checkpoint_dir + f"/unet_multilabel_{current_time}_best.pt"
+                config.checkpoint_dir + f"/unet_ipm_multilabel_{current_time}_best.pt"
             )
 
             torch.save(
