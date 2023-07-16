@@ -3,7 +3,9 @@ from torch.utils.data import DataLoader
 
 from models.pyramid import build_pyramid_occupancy_network
 from dataset import NuScenesDataset
-from logger import TensorboardLogger
+
+# from logger import TensorboardLogger
+from logger_with_early_stop import TensorboardLogger
 
 import torch
 import torch.nn as nn
@@ -20,9 +22,6 @@ from tqdm import tqdm
 
 def main():
     config = load_config()
-
-    sample_tokens = config.sample_tokens  # get all tokens of scene-0061
-    split_index = int(len(sample_tokens) // (1 / 0.7))
 
     train_transform = A.Compose(
         [
@@ -52,9 +51,8 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens[:split_index],
-        # scene_names=config.train_scenes,
-        image_size=(200, 196),
+        sample_tokens=config.train_tokens,
+        image_size=(200, 112),
         flatten_labels=(config.method_type == "multiclass"),
         transform=train_transform,
         image_transform=train_image_transform,
@@ -71,9 +69,8 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens[split_index:],
-        # scene_names=config.val_scenes,
-        image_size=(200, 196),
+        sample_tokens=config.train_tokens,
+        image_size=(200, 112),
         flatten_labels=(config.method_type == "multiclass"),
     )
 
@@ -95,7 +92,7 @@ def main():
     else:
         device = "cpu"
 
-    network = build_pyramid_occupancy_network().to(device)
+    network = build_pyramid_occupancy_network()
 
     if train_dataset.flatten_labels:
         criterion = nn.CrossEntropyLoss().to(device)  # multiclass
@@ -108,24 +105,27 @@ def main():
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    is_load_checkpoint = True
+    is_load_checkpoint = False
 
+    network.to(device)
     if is_load_checkpoint:
-        log_dir = "runs\PON_multilabel_1682960034.69305"
-        current_time = "1682960034.69305"
-        checkpoint_path = "checkpoints\PON_multilabel_1682960034.69305_00001.pt"
+        log_dir = "runs/PON_multilabel_1682961663.0940795"
+        current_time = "1682961663.0940795"
+        checkpoint_path = "checkpoints/PON_multilabel_1682961663.0940795_00199.pt"
         checkpoint = torch.load(checkpoint_path)
         network.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         initial_step = checkpoint["step"]
         initial_epoch = checkpoint["epoch"] + 1
-        epochs = initial_epoch + config.epochs
+        epochs = initial_epoch + 100
     else:
         current_time = time.time()
         log_dir = f"{config.log_dir}/PON_{task}_{current_time}"
         initial_step = 0
         initial_epoch = 0
         epochs = config.epochs
+
+    network.to(device)
 
     logger = TensorboardLogger(
         device,
@@ -167,9 +167,8 @@ def main():
         logger.writer.add_text(
             "Experiment Configurations", config_log_table, global_step=0
         )
-    
+
     for epoch in tqdm(range(initial_epoch, epochs)):
-        print(epoch)
         for batch_idx, batch in enumerate(train_loader):
             images, labels, masks, calibs = batch
             images = images.to(device)
@@ -178,9 +177,6 @@ def main():
             calibs = calibs.to(device)
 
             predictions = network(images, calibs)
-
-            masks_to_ignore = (masks == -1).long()  # makes mask (-2, -1) to (0, 1)
-            masks_to_ignore = masks_to_ignore.unsqueeze(1).repeat(1, 14, 1, 1)
 
             # compute loss
             if criterion.__class__.__name__ == "CrossEntropyLoss":
@@ -199,22 +195,43 @@ def main():
 
         logger.log_epoch(network, epoch)
 
-    checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    checkpoint_path = (
-        config.checkpoint_dir
-        + f"/PON_{task}_{current_time}_{str(epoch).zfill(5)}.pt"
-    )
-    print('outside loop', epoch)
-    torch.save(
-        dict(
-            epoch=epoch,
-            step=logger.training_step,
-            model_state_dict=network.state_dict(),
-            optimizer_state_dict=optimizer.state_dict(),
-        ),
-        checkpoint_path,
-    )
+        if logger.save_model:
+            print(f"save model at epoch {epoch}")
+            checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+            checkpoint_path = (
+                config.checkpoint_dir + f"/unet_multilabel_{current_time}_best.pt"
+            )
+
+            torch.save(
+                dict(
+                    epoch=epoch,
+                    step=logger.training_step,
+                    model_state_dict=network.state_dict(),
+                    optimizer_state_dict=optimizer.state_dict(),
+                ),
+                checkpoint_path,
+            )
+
+        if logger.not_improve_cosec_counter == 10:
+            print(f"stop training at epoch {epoch}")
+            break
+
+    # checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+    # os.makedirs(checkpoint_dir, exist_ok=True)
+    # checkpoint_path = (
+    #     config.checkpoint_dir + f"/PON_{task}_{current_time}_{str(epoch).zfill(5)}.pt"
+    # )
+    # torch.save(
+    #     dict(
+    #         epoch=epoch,
+    #         step=logger.training_step,
+    #         model_state_dict=network.state_dict(),
+    #         optimizer_state_dict=optimizer.state_dict(),
+    #     ),
+    #     checkpoint_path,
+    # )
 
 
 if __name__ == "__main__":
