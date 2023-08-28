@@ -5,10 +5,19 @@ import torch.nn.functional as F
 
 from .resampler import Resampler
 
-class DenseTransformer(nn.Module):
 
-    def __init__(self, in_channels, channels, resolution, grid_extents, 
-                 ymin, ymax, focal_length, groups=1):
+class VerticalDenseTransformer(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        channels,
+        resolution,
+        grid_extents,
+        ymin,
+        ymax,
+        focal_length,
+        groups=1,
+    ):
         super().__init__()
 
         # Initial convolution to reduce feature dimensions
@@ -31,14 +40,13 @@ class DenseTransformer(nn.Module):
             channels * self.in_height, channels * self.out_depth, 1, groups=groups
         )
         self.out_channels = channels
-    
 
     def forward(self, features, calib, *args):
-
         # Crop feature maps to a fixed input height
-        features = torch.stack([self._crop_feature_map(fmap, cal) 
-                                for fmap, cal in zip(features, calib)])
-        
+        features = torch.stack(
+            [self._crop_feature_map(fmap, cal) for fmap, cal in zip(features, calib)]
+        )
+
         # Reduce feature dimension to minimize memory usage
         features = F.relu(self.bn(self.conv(features)))
 
@@ -48,11 +56,11 @@ class DenseTransformer(nn.Module):
         bev_feats = self.fc(flat_feats).view(B, C, -1, W)
 
         # Resample to orthographic grid
-        return self.resampler(bev_feats, calib)
-
+        resampler_output = self.resampler(bev_feats, calib)
+        # print(resampler_output.shape)
+        return resampler_output
 
     def _crop_feature_map(self, fmap, calib):
-        
         # Compute upper and lower bounds of visible region
         focal_length, img_offset = calib[1, 1:]
         vmid = self.ymid * focal_length / self.zmin + img_offset
