@@ -1,11 +1,15 @@
 from configs.config_utilities import load_config
 from torch.utils.data import DataLoader
 
-from models.pyramid import build_pyramid_occupancy_network
+from models.pyramid import (
+    build_pyramid_occupancy_network,
+    build_extended_pyramid_occupancy_network,
+)
 from dataset import NuScenesDataset
 
 # from logger import TensorboardLogger
 from logger_with_early_stop import TensorboardLogger
+import utilities.torch as torch_utils
 
 import torch
 import torch.nn as nn
@@ -14,19 +18,17 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 import os
-import platform
-import re
 import time
 from tqdm import tqdm
+import numpy as np
 
 
 def main():
-    config = load_config()
+    config = load_config("configs/configs.yml")
 
     train_transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            # A.Rotate(limit=20, p=0.3),
         ]
     )
 
@@ -51,13 +53,13 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=config.train_tokens,
+        # sample_tokens=config.train_tokens,
+        sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
         flatten_labels=(config.method_type == "multiclass"),
         transform=train_transform,
         image_transform=train_image_transform,
     )
-
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -69,11 +71,11 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=config.train_tokens,
+        # sample_tokens=config.val_tokens,
+        sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
         flatten_labels=(config.method_type == "multiclass"),
     )
-
     validate_loader = DataLoader(
         validate_dataset,
         batch_size=config.batch_size,
@@ -82,17 +84,10 @@ def main():
         shuffle=True,
     )
 
-    this_device = platform.platform()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        device = "cuda"
-    elif re.search("arm64", this_device):
-        # use Apple GPU
-        device = "mps"
-    else:
-        device = "cpu"
+    device = torch_utils.detect_device()
 
-    network = build_pyramid_occupancy_network()
+    # network = build_pyramid_occupancy_network(config).to(device)
+    network = build_extended_pyramid_occupancy_network(config, htfm_method="stack").to(device)
 
     if train_dataset.flatten_labels:
         criterion = nn.CrossEntropyLoss().to(device)  # multiclass
@@ -105,22 +100,25 @@ def main():
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    is_load_checkpoint = False
 
-    network.to(device)
+
+    is_load_checkpoint = False
     if is_load_checkpoint:
-        log_dir = "runs/PON_multilabel_1682961663.0940795"
-        current_time = "1682961663.0940795"
-        checkpoint_path = "checkpoints/PON_multilabel_1682961663.0940795_00199.pt"
+        experiment_title = "Full_EPON_H-collage_1693459089.077859"
+        log_dir = f"runs/{experiment_title}"
+        checkpoint_path = f"checkpoints/{experiment_title}/Full_EPON_H-collage_1693459089.077859_00099.pt"
         checkpoint = torch.load(checkpoint_path)
         network.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         initial_step = checkpoint["step"]
         initial_epoch = checkpoint["epoch"] + 1
-        epochs = initial_epoch + 100
+        epochs = initial_epoch + 200
     else:
         current_time = time.time()
-        log_dir = f"{config.log_dir}/PON_{task}_{current_time}"
+        # experiment_title = f"Full_EPON_H-collage_{current_time}"
+        experiment_title = f"Full_EPON_H-stack_{current_time}"
+        # experiment_title = f"Full_PON_{current_time}"
+        log_dir = f"{config.log_dir}/{experiment_title}"
         initial_step = 0
         initial_epoch = 0
         epochs = config.epochs
@@ -150,6 +148,7 @@ def main():
                     <th>Device</th>
                     <th>Loss function</th>
                     <th>Optimizer</th>
+                    <th>Network</th>
                 </tr>
                 <tr>
                     <td>{config.nuscenes_version}</td>
@@ -161,6 +160,7 @@ def main():
                     <td>{device}</td>
                     <td>{criterion.__class__.__name__}</td>
                     <td>{optimizer.__class__.__name__}</td>
+                    <td>{network.__class__.__name__}</td>
                 </tr>
             </table>
         """
@@ -195,43 +195,47 @@ def main():
 
         logger.log_epoch(network, epoch)
 
-        if logger.save_model:
-            print(f"save model at epoch {epoch}")
-            checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
-            os.makedirs(checkpoint_dir, exist_ok=True)
+        # save best model
+        # if logger.save_model:
+        #     print(f"save model at epoch {epoch}")
+        #     checkpoint_dir = os.path.expandvars(config.checkpoint_dir + "/" + experiment_title)
+        #     os.makedirs(checkpoint_dir, exist_ok=True)
 
-            checkpoint_path = (
-                config.checkpoint_dir + f"/unet_multilabel_{current_time}_best.pt"
-            )
+        #     checkpoint_path = (
+        #         checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}_best.pt"
+        #     )
 
-            torch.save(
-                dict(
-                    epoch=epoch,
-                    step=logger.training_step,
-                    model_state_dict=network.state_dict(),
-                    optimizer_state_dict=optimizer.state_dict(),
-                ),
-                checkpoint_path,
-            )
+        #     torch.save(
+        #         dict(
+        #             epoch=epoch,
+        #             step=logger.training_step,
+        #             model_state_dict=network.state_dict(),
+        #             optimizer_state_dict=optimizer.state_dict(),
+        #         ),
+        #         checkpoint_path,
+        #     )
 
-        if logger.not_improve_cosec_counter == 10:
-            print(f"stop training at epoch {epoch}")
-            break
+        # early stop
+        # if logger.not_improve_consec_counter == 10:
+        #     print(f"stop training at epoch {epoch}")
+        #     break
 
-    # checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
-    # os.makedirs(checkpoint_dir, exist_ok=True)
-    # checkpoint_path = (
-    #     config.checkpoint_dir + f"/PON_{task}_{current_time}_{str(epoch).zfill(5)}.pt"
-    # )
-    # torch.save(
-    #     dict(
-    #         epoch=epoch,
-    #         step=logger.training_step,
-    #         model_state_dict=network.state_dict(),
-    #         optimizer_state_dict=optimizer.state_dict(),
-    #     ),
-    #     checkpoint_path,
-    # )
+    # save last epoch
+    checkpoint_dir = os.path.expandvars(config.checkpoint_dir + "/" + experiment_title)
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_path = (
+        checkpoint_dir
+        + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
+    )
+    torch.save(
+        dict(
+            epoch=epoch,
+            step=logger.training_step,
+            model_state_dict=network.state_dict(),
+            optimizer_state_dict=optimizer.state_dict(),
+        ),
+        checkpoint_path,
+    )
 
 
 if __name__ == "__main__":

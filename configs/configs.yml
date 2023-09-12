@@ -5,10 +5,10 @@ log_dir: runs
 checkpoint_dir: checkpoints
 
 # Number of epochs
-epochs: 100
+epochs: 300
 
 # Number of examples per mini-batch
-batch_size: 8
+batch_size: 10
 
 # Number of dataloader threads
 num_workers: 2
@@ -36,6 +36,8 @@ val_scenes:
     # 'scene-0757',
     # 'scene-1100',
   ]
+
+
 
 train_tokens: # 1 scene
   ['f1680ea9126e468ca407f7284efc980c',
@@ -83,6 +85,53 @@ val_tokens: # 1 scene
   'b7b3ad2c218c4192ab958334ea15303f',
   '0a7aef80edbc4854bcd781a3becb943c'
   ]
+
+
+# New Scene: fcbccedd61424f1b85dcbf8f897f9754
+# train_tokens: [ 
+#   '562a992ab3724ba1873439cb5aa79c5f',
+#   'ae6645e8bf474b65b19a69bf71fe90a3',
+#   '87723668b00f419ba263ab062d14bd13',
+#   '4f5e35aa6c6a426ca945e206fb2f4921',
+#   '883020ef0286455bbb4b91bc12f642ac',
+#   '46424bca0dce47e4b112431ecf260696',
+#   'ba01f58b926a472b9d146cb5a54e9a2e',
+#   'a1e3e016cc5442b7b9c84652615b24f7',
+#   'a1c59120cae444969fe633dce315bfaf',
+#   '2548b0212b9b4356b3754f9aff505fba',
+#   '3152f3fe99a545b3a7af4019965f4973',
+#   '43690f8cf9e8472eae04d06de838217a',
+#   '16c0e0687dda444285817f7ccd3387b5',
+#   '78c6783107c4461e830783480eeda657',
+#   '3d1b68481c894b0c84291b7d923e2e23',
+#   '6d2aceca30d140c2ada255c5289f2589',
+#   'f9b9612d1bec41cf974eb41c202759f7',
+#   '4d56d35168514019a3f2f6f39b1b54d5',
+#   '1afba7064f794174a68582db8e099c80',
+#   'c78c89d264e64b1f9f8542e5817fc6f1',
+#   'c6de74ea1ed34b1fa6e084304bfdc184',
+#   'aaeca9b158db49e697a4fc155f783dfa',
+#   'd05e01e43df24e35a7b4f11647e250f6',
+#   '054c2431ba324912bb4799b9217f5b7b',
+#   '45b3945365d04b589a4e3d9d9588b934',
+#   'fa18edcec56e4a87a5cbd9e04a2f3a09',
+#   '059ffc35578745c3b625011b0479a4fa',
+#   'a4f0ea2892094f4586a0e2c84f456d8e'
+# ]
+# val_tokens: [
+#   '30f3278766a040469851546a499aeddd',
+#   '350b563e0523486391eba9d010337e2d',
+#   '579c17cec3f94f0cbb84b8b95590841c',
+#   '94449679456646028efd31ec73c6ae47',
+#   '42563f19747741318b4983bbc61a47b1',
+#   'd5061556971945c2afc03dbfdc3bc1a6',
+#   '8464c748ca5f460dba24b50a233692e4',
+#   '0f4c0e7301424f2996d87a86902aafe9',
+#   'd9a8ad39503a411a8eb7501846d8dfc9',
+#   '47bac577996844c78919b53fa36cf1ed',
+#   'aeffd15cbe594a9a81b26d8bb8d15f3d',
+#   '2d3b48e3840244c7b681cb6e63e2c123'
+# ]
 
 
 

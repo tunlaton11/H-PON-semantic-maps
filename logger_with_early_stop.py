@@ -60,7 +60,7 @@ class TensorboardLogger:
         ).to(device)
 
         self.min_loss = float("inf")
-        self.not_improve_cosec_counter = 0
+        self.not_improve_consec_counter = 0
         self.save_model = False
 
     def log_step(self, loss: float):
@@ -118,10 +118,10 @@ class TensorboardLogger:
 
         if total_loss < self.min_loss:
             self.min_loss = total_loss
-            self.not_improve_cosec_counter = 0
+            self.not_improve_consec_counter = 0
             self.save_model = True
         else:
-            self.not_improve_cosec_counter += 1
+            self.not_improve_consec_counter += 1
             self.save_model = False
 
         if self.validate_loader.dataset.flatten_labels:  # multiclass

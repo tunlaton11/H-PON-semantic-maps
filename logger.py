@@ -156,7 +156,7 @@ class TensorboardLogger:
 def colorise(tensor, cmap, vmin=None, vmax=None, flatten=False):
     if flatten:
         cmap = get_cmap(cmap, 100)
-        cmap_colors = cmap(np.linspace(0, 1, 15))[:14]
+        cmap_colors = cmap(np.linspace(0, 1, 15))[:15]
         cmap = ListedColormap(cmap_colors)
 
         class_prediction_color = cmap(tensor.cpu())
