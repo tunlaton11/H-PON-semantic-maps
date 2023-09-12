@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from models.pyramid import build_pon, build_hpon
 from dataset import NuScenesDataset
 
+from criterion import OccupancyCriterion
 from logger import TensorboardLogger
 import utilities.torch as torch_utils
 
@@ -83,7 +84,13 @@ def main():
     # network = build_pon(config).to(device)
     network = build_hpon(config, htfm_method="stack").to(device)
 
-    criterion = nn.BCEWithLogitsLoss().to(device)
+    # criterion = nn.BCEWithLogitsLoss().to(device)
+    criterion = OccupancyCriterion(
+        config.prior,
+        config.xent_weight,
+        config.uncert_weight,
+        config.weight_mode,
+    ).to(device)
     num_classes = 14
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
