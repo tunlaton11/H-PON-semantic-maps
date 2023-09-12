@@ -168,10 +168,11 @@ def main():
             masks = masks.to(device)
             calibs = calibs.to(device)
 
-            predictions = network(images, calibs)
+            logits = network(images, calibs)
 
             # compute loss
-            loss = criterion(predictions, labels.float()).to(device)
+            # loss = criterion(predictions, labels.float()).to(device)
+            loss = criterion(logits, labels, masks).to(device)
 
             # compute gradient
             optimizer.zero_grad()
