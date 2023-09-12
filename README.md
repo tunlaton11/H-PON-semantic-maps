@@ -6,6 +6,14 @@ This repo is a part of senior project titled "Translating Images into Maps for A
 > We need some codename." - Thanapat T.
 
 
+## Project setup
+```
+conda create --name myenv python=3.9.0
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+pip install --no-deps -r requirements.txt
+```
+
+
 ## Label Generation
 1. Download [nuScenes](https://www.nuscenes.org/nuscenes) dataset and its map expansion.
 2. Extract a dataset folder at root and rename it to "nuscenes".
