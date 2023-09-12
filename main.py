@@ -7,8 +7,7 @@ from models.pyramid import (
 )
 from dataset import NuScenesDataset
 
-# from logger import TensorboardLogger
-from logger_with_early_stop import TensorboardLogger
+from logger import TensorboardLogger
 import utilities.torch as torch_utils
 
 import torch
@@ -56,7 +55,6 @@ def main():
         # sample_tokens=config.train_tokens,
         sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
-        flatten_labels=(config.method_type == "multiclass"),
         transform=train_transform,
         image_transform=train_image_transform,
     )
@@ -74,7 +72,6 @@ def main():
         # sample_tokens=config.val_tokens,
         sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
-        flatten_labels=(config.method_type == "multiclass"),
     )
     validate_loader = DataLoader(
         validate_dataset,
@@ -89,14 +86,8 @@ def main():
     # network = build_pyramid_occupancy_network(config).to(device)
     network = build_extended_pyramid_occupancy_network(config, htfm_method="stack").to(device)
 
-    if train_dataset.flatten_labels:
-        criterion = nn.CrossEntropyLoss().to(device)  # multiclass
-        num_class = 15
-        task = "multiclass"
-    else:
-        criterion = nn.BCEWithLogitsLoss().to(device)  # multilabel
-        num_class = 14
-        task = "multilabel"
+    criterion = nn.BCEWithLogitsLoss().to(device)
+    num_classes = 14
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
@@ -126,12 +117,11 @@ def main():
     network.to(device)
 
     logger = TensorboardLogger(
-        device,
+        device=device,
         log_dir=log_dir,
         validate_loader=validate_loader,
         criterion=criterion,
-        n_classes=num_class,
-        task=task,
+        num_classes=num_classes,
         initial_step=initial_step,
     )
 
@@ -169,7 +159,7 @@ def main():
         )
 
     for epoch in tqdm(range(initial_epoch, epochs)):
-        for batch_idx, batch in enumerate(train_loader):
+        for batch in train_loader:
             images, labels, masks, calibs = batch
             images = images.to(device)
             labels = labels.to(device)
@@ -179,10 +169,7 @@ def main():
             predictions = network(images, calibs)
 
             # compute loss
-            if criterion.__class__.__name__ == "CrossEntropyLoss":
-                loss = criterion(predictions, labels.long()).to(device)
-            else:
-                loss = criterion(predictions, labels.float()).to(device)
+            loss = criterion(predictions, labels.float()).to(device)
 
             # compute gradient
             optimizer.zero_grad()
