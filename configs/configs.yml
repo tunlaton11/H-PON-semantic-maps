@@ -206,3 +206,12 @@ prior:
   - 0.00012   # bicycle
   - 0.00031   # traffic_cone
   - 0.00176   # barrier
+
+# Binary cross entropy loss weight
+xent_weight: 1.0
+
+# Max entropy uncertainty loss weight
+uncert_weight: 0.001
+
+# Method of weighting classes in loss function
+weight_mode: sqrt_inverse
