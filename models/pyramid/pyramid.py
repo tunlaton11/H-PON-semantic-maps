@@ -27,7 +27,12 @@ class PyramidOccupancyNetwork(nn.Module):
         return logits
 
 
-class ExtendedPyramidOccupancyNetwork(nn.Module):
+class HorizontallyAwarePyramidOccupancyNetwork(nn.Module):
+    """Horizontally-aware Pyramid Occupancy Network - the original
+    Pyramid Occupancy Network is extended with a new component called
+    horizontal transformer pyramid.
+    """
+
     def __init__(self, frontend, v_transformer, h_transformer, topdown, classifier):
         super().__init__()
 
@@ -44,7 +49,7 @@ class ExtendedPyramidOccupancyNetwork(nn.Module):
         # Transform image features to birds-eye-view
         v_bev_feats = self.v_transformer(feature_maps, calib)
         h_bev_feats = self.h_transformer(feature_maps, calib)
-        bev_feats = torch.cat([v_bev_feats, h_bev_feats], dim=1)
+        bev_feats = torch.cat([v_bev_feats, h_bev_feats], dim=1)  # stack both bev feats
 
         # Apply topdown network
         td_feats = self.topdown(bev_feats)

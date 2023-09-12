@@ -1,10 +1,7 @@
 from configs.config_utilities import load_config
 from torch.utils.data import DataLoader
 
-from models.pyramid import (
-    build_pyramid_occupancy_network,
-    build_extended_pyramid_occupancy_network,
-)
+from models.pyramid import build_pon, build_hpon
 from dataset import NuScenesDataset
 
 from logger import TensorboardLogger
@@ -83,15 +80,13 @@ def main():
 
     device = torch_utils.detect_device()
 
-    # network = build_pyramid_occupancy_network(config).to(device)
-    network = build_extended_pyramid_occupancy_network(config, htfm_method="stack").to(device)
+    # network = build_pon(config).to(device)
+    network = build_hpon(config, htfm_method="stack").to(device)
 
     criterion = nn.BCEWithLogitsLoss().to(device)
     num_classes = 14
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
-
-
 
     is_load_checkpoint = False
     if is_load_checkpoint:
@@ -106,8 +101,8 @@ def main():
         epochs = initial_epoch + 200
     else:
         current_time = time.time()
-        # experiment_title = f"Full_EPON_H-collage_{current_time}"
-        experiment_title = f"Full_EPON_H-stack_{current_time}"
+        # experiment_title = f"Full_HPON_H-collage_{current_time}"
+        experiment_title = f"Full_HPON_H-stack_{current_time}"
         # experiment_title = f"Full_PON_{current_time}"
         log_dir = f"{config.log_dir}/{experiment_title}"
         initial_step = 0
@@ -210,10 +205,7 @@ def main():
     # save last epoch
     checkpoint_dir = os.path.expandvars(config.checkpoint_dir + "/" + experiment_title)
     os.makedirs(checkpoint_dir, exist_ok=True)
-    checkpoint_path = (
-        checkpoint_dir
-        + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
-    )
+    checkpoint_path = checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
     torch.save(
         dict(
             epoch=epoch,

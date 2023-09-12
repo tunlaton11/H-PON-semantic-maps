@@ -1,5 +1,5 @@
 import torch
-from .pyramid import PyramidOccupancyNetwork, ExtendedPyramidOccupancyNetwork
+from .pyramid import PyramidOccupancyNetwork, HorizontallyAwarePyramidOccupancyNetwork
 from .fpn import FPN50
 from .topdown import TopdownNetwork
 from .v_transformer_pyramid import VerticalTransformerPyramid
@@ -13,7 +13,7 @@ from functools import reduce
 from typing import Literal
 
 
-def build_pyramid_occupancy_network(config):
+def build_pon(config):
     # Build frontend
     frontend = FPN50()
 
@@ -55,7 +55,7 @@ def build_pyramid_occupancy_network(config):
     )
 
 
-def build_extended_pyramid_occupancy_network(
+def build_hpon(
     config,
     htfm_method: Literal["collage", "stack", "multiscale"],
 ):
@@ -114,7 +114,7 @@ def build_extended_pyramid_occupancy_network(
     # classifier.initialise(config.prior)
 
     # Assemble Pyramid Occupancy Network
-    return ExtendedPyramidOccupancyNetwork(
+    return HorizontallyAwarePyramidOccupancyNetwork(
         frontend,
         v_transformer,
         h_transformer,
