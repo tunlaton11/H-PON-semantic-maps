@@ -11,6 +11,7 @@ from matplotlib.colors import ListedColormap
 import torchmetrics.classification
 import numpy as np
 import matplotlib.pyplot as plt
+from experiments.ipm.ipm_utilities import ipm_transform
 
 import torchvision.utils
 
@@ -22,10 +23,8 @@ class TensorboardLogger:
         log_dir: str,
         validate_loader: DataLoader,
         criterion,  # Callable,
-        n_classes: int,
+        num_classes: int,
         initial_step: int = 0,
-        task="multilabel",  # Literal["multiclass", "multilabel"] = "multilabel",
-        iou_average="macro",  # Literal["micro", "macro", "weighted", "none"] = "macro",
     ):
         self.device = device
         self.writer = SummaryWriter(log_dir)
@@ -37,26 +36,18 @@ class TensorboardLogger:
         self.validate_loader = validate_loader
         self.criterion = criterion
 
-        self.task = task
-        if task == "multiclass":
-            num_classes = n_classes
-            num_labels = None
-        elif task == "multilabel":
-            num_classes = None
-            num_labels = n_classes
-
-        self.iou_metric = torchmetrics.classification.JaccardIndex(
-            task=task,
-            num_classes=num_classes,
-            num_labels=num_labels,
+        self.iou_metric = torchmetrics.classification.MultilabelJaccardIndex(
+            num_labels=num_classes,
             average="macro",
         ).to(device)
-        self.iou_metric_by_class = torchmetrics.classification.JaccardIndex(
-            task=task,
-            num_classes=num_classes,
-            num_labels=num_labels,
+        self.iou_metric_by_class = torchmetrics.classification.MultilabelJaccardIndex(
+            num_labels=num_classes,
             average="none",
         ).to(device)
+
+        self.min_loss = float("inf")
+        self.no_improve_consec_counter = 0
+        self.save_model = False
 
     def log_step(self, loss: float):
         self.training_loss += loss
@@ -84,24 +75,19 @@ class TensorboardLogger:
         num_step = 0
 
         with torch.no_grad():
-            for batch_idx, batch in enumerate(self.validate_loader):
+            for batch in self.validate_loader:
                 images, labels, masks, calibs = batch
-                images = images.to(self.device)
+
                 labels = labels.to(self.device)
                 masks = masks.to(self.device)
                 calibs = calibs.to(self.device)
-                # predictions = network(images).to(self.device)
+
+                images = images.to(self.device)
                 predictions = network(images, calibs).to(self.device)
 
-                masks_to_ignore = (masks == -1).long()  # makes mask (-2, -1) to (0, 1)
-                masks_to_ignore = masks_to_ignore.unsqueeze(1).repeat(1, 14, 1, 1)
+                # predictions = network(images).to(self.device)
 
-                if self.criterion.__class__.__name__ == "CrossEntropyLoss":
-                    # multiclass
-                    loss = self.criterion(predictions, labels.long()).to(self.device)
-                else:
-                    # multilabel
-                    loss = self.criterion(predictions, labels.float()).to(self.device)
+                loss = self.criterion(predictions, labels.float()).to(self.device)
 
                 total_loss += loss.item()
                 iou = self.iou_metric(predictions, labels)
@@ -110,27 +96,25 @@ class TensorboardLogger:
                 total_iou_by_class += iou_by_class
                 num_step += 1
 
-        if self.validate_loader.dataset.flatten_labels:  # multiclass
-            visualize_muticlass(
-                self.writer,
-                images,
-                predictions[-1],
-                labels[-1],
-                epoch,
-                "Validate",
-            )
-
+        if total_loss < self.min_loss:
+            self.min_loss = total_loss
+            self.not_improve_consec_counter = 0
+            self.save_model = True
         else:
-            visualise(
-                self.writer,
-                images,
-                predictions[-1],
-                labels[-1],
-                masks[-1],
-                epoch,
-                "nuscenes",
-                split="Validate",
-            )
+            self.not_improve_consec_counter += 1
+            self.save_model = False
+
+        
+        visualise(
+            self.writer,
+            images[-1],
+            predictions[-1],
+            labels[-1],
+            masks[-1],
+            epoch,
+            "nuscenes",
+            split="Validate",
+        )
 
         for class_iou, class_name in zip(total_iou_by_class, NUSCENES_CLASS_NAMES):
             self.writer.add_scalar(
@@ -188,7 +172,6 @@ def visualise(
     labels,
     mask,
     step,
-    dataset,
     split,
 ):
     # class_names = NUSCENES_CLASS_NAMES
@@ -224,7 +207,7 @@ def visualise(
     gt_grid = torchvision.utils.make_grid(colorised_gt, 6, 3)
     pred_grid = torchvision.utils.make_grid(colorised_pred, 6, 3)
 
-    summary.add_image(split + "/image", image[-1], step, dataformats="CHW")
+    summary.add_image(split + "/image", image, step, dataformats="CHW")
     summary.add_image(
         split + "/predicted",
         pred_grid,
@@ -266,7 +249,7 @@ def visualize_muticlass(
     gt_grid = torchvision.utils.make_grid(colorised_gt[1:])
     img_grid = torchvision.utils.make_grid(colorised_pred[1:])
 
-    writer.add_image(f"{split}/image", image[-1], step)
+    writer.add_image(f"{split}/image", image, step)
     writer.add_image(f"{split}/gt", gt_grid, step)
     writer.add_image(f"{split}/predicted", img_grid, step)
 

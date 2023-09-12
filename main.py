@@ -1,9 +1,11 @@
 from configs.config_utilities import load_config
 from torch.utils.data import DataLoader
 
-from models.pyramid import build_pyramid_occupancy_network
+from models.pyramid import build_pon, build_hpon
 from dataset import NuScenesDataset
+
 from logger import TensorboardLogger
+import utilities.torch as torch_utils
 
 import torch
 import torch.nn as nn
@@ -12,22 +14,17 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 import os
-import platform
-import re
 import time
 from tqdm import tqdm
+import numpy as np
 
 
 def main():
-    config = load_config()
-
-    sample_tokens = config.sample_tokens  # get all tokens of scene-0061
-    split_index = int(len(sample_tokens) // (1 / 0.7))
+    config = load_config("configs/configs.yml")
 
     train_transform = A.Compose(
         [
             A.HorizontalFlip(p=0.5),
-            # A.Rotate(limit=20, p=0.3),
         ]
     )
 
@@ -52,14 +49,12 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens[:split_index],
-        # scene_names=config.train_scenes,
-        image_size=(200, 196),
-        flatten_labels=(config.method_type == "multiclass"),
+        # sample_tokens=config.train_tokens,
+        sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
+        image_size=(200, 112),
         transform=train_transform,
         image_transform=train_image_transform,
     )
-
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -71,12 +66,10 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens[split_index:],
-        # scene_names=config.val_scenes,
-        image_size=(200, 196),
-        flatten_labels=(config.method_type == "multiclass"),
+        # sample_tokens=config.val_tokens,
+        sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
+        image_size=(200, 112),
     )
-
     validate_loader = DataLoader(
         validate_dataset,
         batch_size=config.batch_size,
@@ -85,55 +78,45 @@ def main():
         shuffle=True,
     )
 
-    this_device = platform.platform()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        device = "cuda"
-    elif re.search("arm64", this_device):
-        # use Apple GPU
-        device = "mps"
-    else:
-        device = "cpu"
+    device = torch_utils.detect_device()
 
-    network = build_pyramid_occupancy_network().to(device)
+    # network = build_pon(config).to(device)
+    network = build_hpon(config, htfm_method="stack").to(device)
 
-    if train_dataset.flatten_labels:
-        criterion = nn.CrossEntropyLoss().to(device)  # multiclass
-        num_class = 15
-        task = "multiclass"
-    else:
-        criterion = nn.BCEWithLogitsLoss().to(device)  # multilabel
-        num_class = 14
-        task = "multilabel"
+    criterion = nn.BCEWithLogitsLoss().to(device)
+    num_classes = 14
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    is_load_checkpoint = True
-
+    is_load_checkpoint = False
     if is_load_checkpoint:
-        log_dir = "runs\PON_multilabel_1682960034.69305"
-        current_time = "1682960034.69305"
-        checkpoint_path = "checkpoints\PON_multilabel_1682960034.69305_00001.pt"
+        experiment_title = "Full_EPON_H-collage_1693459089.077859"
+        log_dir = f"runs/{experiment_title}"
+        checkpoint_path = f"checkpoints/{experiment_title}/Full_EPON_H-collage_1693459089.077859_00099.pt"
         checkpoint = torch.load(checkpoint_path)
         network.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         initial_step = checkpoint["step"]
         initial_epoch = checkpoint["epoch"] + 1
-        epochs = initial_epoch + config.epochs
+        epochs = initial_epoch + 200
     else:
         current_time = time.time()
-        log_dir = f"{config.log_dir}/PON_{task}_{current_time}"
+        # experiment_title = f"Full_HPON_H-collage_{current_time}"
+        experiment_title = f"Full_HPON_H-stack_{current_time}"
+        # experiment_title = f"Full_PON_{current_time}"
+        log_dir = f"{config.log_dir}/{experiment_title}"
         initial_step = 0
         initial_epoch = 0
         epochs = config.epochs
 
+    network.to(device)
+
     logger = TensorboardLogger(
-        device,
+        device=device,
         log_dir=log_dir,
         validate_loader=validate_loader,
         criterion=criterion,
-        n_classes=num_class,
-        task=task,
+        num_classes=num_classes,
         initial_step=initial_step,
     )
 
@@ -150,6 +133,7 @@ def main():
                     <th>Device</th>
                     <th>Loss function</th>
                     <th>Optimizer</th>
+                    <th>Network</th>
                 </tr>
                 <tr>
                     <td>{config.nuscenes_version}</td>
@@ -161,16 +145,16 @@ def main():
                     <td>{device}</td>
                     <td>{criterion.__class__.__name__}</td>
                     <td>{optimizer.__class__.__name__}</td>
+                    <td>{network.__class__.__name__}</td>
                 </tr>
             </table>
         """
         logger.writer.add_text(
             "Experiment Configurations", config_log_table, global_step=0
         )
-    
+
     for epoch in tqdm(range(initial_epoch, epochs)):
-        print(epoch)
-        for batch_idx, batch in enumerate(train_loader):
+        for batch in train_loader:
             images, labels, masks, calibs = batch
             images = images.to(device)
             labels = labels.to(device)
@@ -179,14 +163,8 @@ def main():
 
             predictions = network(images, calibs)
 
-            masks_to_ignore = (masks == -1).long()  # makes mask (-2, -1) to (0, 1)
-            masks_to_ignore = masks_to_ignore.unsqueeze(1).repeat(1, 14, 1, 1)
-
             # compute loss
-            if criterion.__class__.__name__ == "CrossEntropyLoss":
-                loss = criterion(predictions, labels.long()).to(device)
-            else:
-                loss = criterion(predictions, labels.float()).to(device)
+            loss = criterion(predictions, labels.float()).to(device)
 
             # compute gradient
             optimizer.zero_grad()
@@ -199,13 +177,35 @@ def main():
 
         logger.log_epoch(network, epoch)
 
-    checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+        # save best model
+        # if logger.save_model:
+        #     print(f"save model at epoch {epoch}")
+        #     checkpoint_dir = os.path.expandvars(config.checkpoint_dir + "/" + experiment_title)
+        #     os.makedirs(checkpoint_dir, exist_ok=True)
+
+        #     checkpoint_path = (
+        #         checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}_best.pt"
+        #     )
+
+        #     torch.save(
+        #         dict(
+        #             epoch=epoch,
+        #             step=logger.training_step,
+        #             model_state_dict=network.state_dict(),
+        #             optimizer_state_dict=optimizer.state_dict(),
+        #         ),
+        #         checkpoint_path,
+        #     )
+
+        # early stop
+        # if logger.not_improve_consec_counter == 10:
+        #     print(f"stop training at epoch {epoch}")
+        #     break
+
+    # save last epoch
+    checkpoint_dir = os.path.expandvars(config.checkpoint_dir + "/" + experiment_title)
     os.makedirs(checkpoint_dir, exist_ok=True)
-    checkpoint_path = (
-        config.checkpoint_dir
-        + f"/PON_{task}_{current_time}_{str(epoch).zfill(5)}.pt"
-    )
-    print('outside loop', epoch)
+    checkpoint_path = checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
     torch.save(
         dict(
             epoch=epoch,

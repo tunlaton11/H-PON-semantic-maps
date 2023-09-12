@@ -1,6 +1,12 @@
+import sys
+import os
+
+sys.path.append("..")
+
 from configs.config_utilities import load_config
 from dataset import NuScenesDataset
 from model import UNET
+from ipm.ipm_utilities import ipm_transform
 
 import numpy as np
 import torch
@@ -16,7 +22,9 @@ import re
 from tqdm import tqdm
 
 import time
-from logger import TensorboardLogger
+from logger_with_early_stop import TensorboardLogger
+
+os.chdir("..")
 
 
 def main():
@@ -24,9 +32,20 @@ def main():
 
     train_transform = A.Compose(
         [
-            A.Resize(height=196, width=200),
-            A.Rotate(limit=35, p=0.8),
             A.HorizontalFlip(p=0.5),
+            # A.Rotate(limit=20, p=0.3),
+        ]
+    )
+
+    train_image_transform = A.Compose(
+        [
+            A.ColorJitter(
+                brightness=0.2,
+                contrast=0.2,
+                saturation=0.2,
+                hue=0.2,
+                p=0.25,
+            ),
             A.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
@@ -38,11 +57,11 @@ def main():
     train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
-        image_size=(200, 196),
+        image_size=(200, 112),
         label_dir=config.label_dir,
-        scene_names=config.train_scenes,
-        # flatten_labels=True
-        # transform=train_transform,
+        sample_tokens=config.train_tokens,
+        transform=train_transform,
+        image_transform=train_image_transform,
     )
 
     train_loader = DataLoader(
@@ -56,10 +75,9 @@ def main():
     validate_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
-        image_size=(200, 196),
+        image_size=(200, 112),
         label_dir=config.label_dir,
-        scene_names=config.val_scenes,
-        # flatten_labels=True,
+        sample_tokens=config.val_tokens,
     )
     validate_loader = DataLoader(
         validate_dataset,
@@ -81,24 +99,21 @@ def main():
 
     print(f"----- Training on {device} -----")
 
-    if train_dataset.flatten_labels:
-        loss_fn = nn.CrossEntropyLoss().to(device)
-        out_channels = 15
-    else:
-        loss_fn = nn.BCEWithLogitsLoss().to(device)
-        out_channels = 14
+    criterion = nn.BCEWithLogitsLoss().to(device)
 
-    network = UNET(in_channels=3, out_channels=out_channels)
+    network = UNET(in_channels=3, out_channels=14).to(device)
 
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
     current_time = time.time()
     logger = TensorboardLogger(
         device,
-        log_dir=f"{config.log_dir}/{current_time}",
+        # log_dir=f"{config.log_dir}/unet_ipm_multilabel_{current_time}",
+        log_dir=f"{config.log_dir}/unet_ipm_multilabel_{current_time}",
         validate_loader=validate_loader,
-        loss_fn=loss_fn,
+        criterion=criterion,
         n_classes=14,
+        task="multilabel",
     )
 
     config_log_table = f"""
@@ -122,7 +137,7 @@ def main():
                 <td>{config.lr}</td>
                 <td>{config.epochs}</td>
                 <td>{device}</td>
-                <td>{loss_fn.__class__.__name__}</td>
+                <td>{criterion.__class__.__name__}</td>
                 <td>{optimizer.__class__.__name__}</td>
             </tr>
         </table>
@@ -130,25 +145,25 @@ def main():
 
     logger.writer.add_text("Experiment Configurations", config_log_table, global_step=0)
 
-    network.to(device)
-
     for epoch in tqdm(range(config.epochs)):
         for batch_idx, batch in enumerate(train_loader):
-            image, labels, mask = batch
-            image = image.to(device)
+            images, labels, mask, calibs = batch
 
-            if loss_fn.__class__.__name__ == "CrossEntropyLoss":
-                labels = labels.long().to(device)
-
-            else:
-                labels = labels.type(torch.FloatTensor).to(device)
-
+            labels = labels.type(torch.FloatTensor).to(device)
             mask = mask.to(device)
 
-            prediction = network(image).to(device)
+            bev_images = ipm_transform(
+                images,
+                calibs,
+                config.map_extents,
+                config.map_resolution,
+                car_height=1.562,
+            )
+            bev_images = bev_images.to(device)
+            prediction = network(bev_images).to(device)
 
             # compute loss
-            loss = loss_fn(prediction, labels).to(device)
+            loss = criterion(prediction, labels).to(device)
 
             # compute gradient
             optimizer.zero_grad()
@@ -160,6 +175,29 @@ def main():
             logger.log_step(loss=loss.item())
 
         logger.log_epoch(network, epoch)
+
+        if logger.save_model:
+            print(f"save model at epoch {epoch}")
+            checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+            checkpoint_path = (
+                config.checkpoint_dir + f"/unet_ipm_multilabel_{current_time}_best.pt"
+            )
+
+            torch.save(
+                dict(
+                    epoch=epoch,
+                    step=logger.training_step,
+                    model_state_dict=network.state_dict(),
+                    optimizer_state_dict=optimizer.state_dict(),
+                ),
+                checkpoint_path,
+            )
+
+        if logger.not_improve_cosec_counter == 10:
+            print(f"stop training at epoch {epoch}")
+            break
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ sys.path.append("..")
 from configs.config_utilities import load_config
 from dataset import NuScenesDataset
 from model import UNET
+from ipm.ipm_utilities import ipm_transform
 
 import numpy as np
 import torch
@@ -21,7 +22,7 @@ import re
 from tqdm import tqdm
 
 import time
-from logger import TensorboardLogger
+from logger_with_early_stop import TensorboardLogger
 
 os.chdir("..")
 
@@ -31,9 +32,20 @@ def main():
 
     train_transform = A.Compose(
         [
-            A.Resize(height=196, width=200),
-            A.Rotate(limit=35, p=0.8),
             A.HorizontalFlip(p=0.5),
+            # A.Rotate(limit=20, p=0.3),
+        ]
+    )
+
+    train_image_transform = A.Compose(
+        [
+            A.ColorJitter(
+                brightness=0.2,
+                contrast=0.2,
+                saturation=0.2,
+                hue=0.2,
+                p=0.25,
+            ),
             A.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
@@ -42,16 +54,14 @@ def main():
         ]
     )
 
-    sample_tokens = ["e3d495d4ac534d54b321f50006683844"]
-
     train_dataset = NuScenesDataset(
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         image_size=(200, 196),
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens
-        # scene_names=config.train_scenes,
-        # transform=train_transform,
+        sample_tokens=config.train_tokens,
+        transform=train_transform,
+        image_transform=train_image_transform,
     )
 
     train_loader = DataLoader(
@@ -67,8 +77,7 @@ def main():
         nuscenes_version=config.nuscenes_version,
         image_size=(200, 196),
         label_dir=config.label_dir,
-        sample_tokens=sample_tokens
-        # scene_names=config.val_scenes,
+        sample_tokens=config.val_tokens,
     )
     validate_loader = DataLoader(
         validate_dataset,
@@ -137,14 +146,13 @@ def main():
 
     for epoch in tqdm(range(config.epochs)):
         for batch_idx, batch in enumerate(train_loader):
-            image, labels, mask, _ = batch
-            image = image.to(device)
+            images, labels, mask, calibs = batch
 
+            images = images.to(device)
             labels = labels.type(torch.FloatTensor).to(device)
-
             mask = mask.to(device)
 
-            prediction = network(image).to(device)
+            prediction = network(images).to(device)
 
             # compute loss
             loss = criterion(prediction, labels).to(device)
@@ -159,6 +167,29 @@ def main():
             logger.log_step(loss=loss.item())
 
         logger.log_epoch(network, epoch)
+
+        if logger.save_model:
+            print(f"save model at epoch {epoch}")
+            checkpoint_dir = os.path.expandvars(config.checkpoint_dir)
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+            checkpoint_path = (
+                config.checkpoint_dir + f"/unet_multilabel_{current_time}_best.pt"
+            )
+
+            torch.save(
+                dict(
+                    epoch=epoch,
+                    step=logger.training_step,
+                    model_state_dict=network.state_dict(),
+                    optimizer_state_dict=optimizer.state_dict(),
+                ),
+                checkpoint_path,
+            )
+
+        if logger.not_improve_cosec_counter == 10:
+            print(f"stop training at epoch {epoch}")
+            break
 
 
 if __name__ == "__main__":

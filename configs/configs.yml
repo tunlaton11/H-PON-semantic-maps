@@ -5,10 +5,10 @@ log_dir: runs
 checkpoint_dir: checkpoints
 
 # Number of epochs
-epochs: 1
+epochs: 300
 
 # Number of examples per mini-batch
-batch_size: 3
+batch_size: 10
 
 # Number of dataloader threads
 num_workers: 2
@@ -37,50 +37,101 @@ val_scenes:
     # 'scene-1100',
   ]
 
-sample_tokens:
- [
-    "b04ad7e3c86d47fc98dba25595b2327e",
-    "9ce08dbf60bb4b22a952e11f56504292",
-    "f921ab741862402aa867b4cd7ceb3d40",
-    "5e862f5aad0444f199824efc78edfff0",
-    "85640ff86e61419993ae9a3f9ac456eb",
-    "bf4b00d2af9344c3b3f444206f75cf14",
-    "5cfd339fb1cc4c84881d9bf2a48e1f46",
-    "b732ab7ce371484b93ba0c2d2b2f9ae7",
-    "b4f9181a80034d22972433e4d1dd9f9e",
-    "b7b3ad2c218c4192ab958334ea15303f",
-    "c33b84588ead4a609f195d2c4fb56801",
-    "f331f492972540ab8e843d484ac6919e",
-    "6830e208ec3b444f878c8f5c11135dc6",
-    "35480f511677406fa35386f153291792",
-    "f1680ea9126e468ca407f7284efc980c",
-    "731b03604b4849f0aa646d0b46571451",
-    "19f4244aa37b42a49a005b8ea6d53953",
-    "e30d5ecf0fd6418089112b4e4811737c",
-    "3cd43f6baa4e444999eef6cb1c89416a",
-    "76542abab799469cbfb7b293c83192aa",
-    "0a7aef80edbc4854bcd781a3becb943c",
-    "deb67484315f4ba8b56ea8f03ef3d444",
-    "73fffafd944c4c42a32cfcaeeafc4944",
-    "f225d67c5e1e4f2e8f86fd9b7d2cb9e1",
-    "d507acb08ec94f00b54bd650bb4b1c52",
-    "17b8884e21844ad9bf5df19a141a1156",
-    "eeed80879b3d4580804a0da6bf9c84e2",
-    "881817a81bab4d8488464ac42db89f5f",
-    "7b6c123b090340358e642a70c6fda96d",
-    "fc4cba53bd2c4923b17da19b2e6e44fa",
-    "e26810c28df44cefa069778865bd832c",
-    "df1863e3fe614f288a9974d619343050",
-    "9b6ce88572b947b3b8e141c8bfe96f5b",
-    "beea8d83b337481799c36c6561ec3de6",
-    "452cb8aa72de4124907764018407b8d8",
-    "834ce773cfa04be8b56d9614ed1dcf7f",
-    "50e02dd80f9444a194abe8acae4bb211",
-    "029dc949763249ddbeb3f756cb7b259f",
-    "f059772e809443b787af4bb7c60c094a",
-    "d209059d97174d28a279f467e9cf89f0",
-    "9d8d518a34ff462d8d6a8fb665d5edd4",
-]
+
+
+train_tokens: # 1 scene
+  ['f1680ea9126e468ca407f7284efc980c',
+  'bf4b00d2af9344c3b3f444206f75cf14',
+  '73fffafd944c4c42a32cfcaeeafc4944',
+  '9d8d518a34ff462d8d6a8fb665d5edd4',
+  'd209059d97174d28a279f467e9cf89f0',
+  '19f4244aa37b42a49a005b8ea6d53953',
+  'c33b84588ead4a609f195d2c4fb56801',
+  '731b03604b4849f0aa646d0b46571451',
+  'f331f492972540ab8e843d484ac6919e',
+  '834ce773cfa04be8b56d9614ed1dcf7f',
+  '50e02dd80f9444a194abe8acae4bb211',
+  'd507acb08ec94f00b54bd650bb4b1c52',
+  'b4f9181a80034d22972433e4d1dd9f9e',
+  'b04ad7e3c86d47fc98dba25595b2327e',
+  '76542abab799469cbfb7b293c83192aa',
+  'beea8d83b337481799c36c6561ec3de6',
+  '6830e208ec3b444f878c8f5c11135dc6',
+  'deb67484315f4ba8b56ea8f03ef3d444',
+  'f059772e809443b787af4bb7c60c094a',
+  '9b6ce88572b947b3b8e141c8bfe96f5b',
+  '3cd43f6baa4e444999eef6cb1c89416a',
+  'e26810c28df44cefa069778865bd832c',
+  '881817a81bab4d8488464ac42db89f5f',
+  'e30d5ecf0fd6418089112b4e4811737c',
+  'eeed80879b3d4580804a0da6bf9c84e2',
+  'b732ab7ce371484b93ba0c2d2b2f9ae7',
+  'fc4cba53bd2c4923b17da19b2e6e44fa',
+  '7b6c123b090340358e642a70c6fda96d'
+  ]
+
+val_tokens: # 1 scene
+  ['df1863e3fe614f288a9974d619343050',
+  'f921ab741862402aa867b4cd7ceb3d40',
+  '9ce08dbf60bb4b22a952e11f56504292',
+  '35480f511677406fa35386f153291792',
+  '029dc949763249ddbeb3f756cb7b259f',
+  'f225d67c5e1e4f2e8f86fd9b7d2cb9e1',
+  '5cfd339fb1cc4c84881d9bf2a48e1f46',
+  '452cb8aa72de4124907764018407b8d8',
+  '85640ff86e61419993ae9a3f9ac456eb',
+  '5e862f5aad0444f199824efc78edfff0',
+  '17b8884e21844ad9bf5df19a141a1156',
+  'b7b3ad2c218c4192ab958334ea15303f',
+  '0a7aef80edbc4854bcd781a3becb943c'
+  ]
+
+
+# New Scene: fcbccedd61424f1b85dcbf8f897f9754
+# train_tokens: [ 
+#   '562a992ab3724ba1873439cb5aa79c5f',
+#   'ae6645e8bf474b65b19a69bf71fe90a3',
+#   '87723668b00f419ba263ab062d14bd13',
+#   '4f5e35aa6c6a426ca945e206fb2f4921',
+#   '883020ef0286455bbb4b91bc12f642ac',
+#   '46424bca0dce47e4b112431ecf260696',
+#   'ba01f58b926a472b9d146cb5a54e9a2e',
+#   'a1e3e016cc5442b7b9c84652615b24f7',
+#   'a1c59120cae444969fe633dce315bfaf',
+#   '2548b0212b9b4356b3754f9aff505fba',
+#   '3152f3fe99a545b3a7af4019965f4973',
+#   '43690f8cf9e8472eae04d06de838217a',
+#   '16c0e0687dda444285817f7ccd3387b5',
+#   '78c6783107c4461e830783480eeda657',
+#   '3d1b68481c894b0c84291b7d923e2e23',
+#   '6d2aceca30d140c2ada255c5289f2589',
+#   'f9b9612d1bec41cf974eb41c202759f7',
+#   '4d56d35168514019a3f2f6f39b1b54d5',
+#   '1afba7064f794174a68582db8e099c80',
+#   'c78c89d264e64b1f9f8542e5817fc6f1',
+#   'c6de74ea1ed34b1fa6e084304bfdc184',
+#   'aaeca9b158db49e697a4fc155f783dfa',
+#   'd05e01e43df24e35a7b4f11647e250f6',
+#   '054c2431ba324912bb4799b9217f5b7b',
+#   '45b3945365d04b589a4e3d9d9588b934',
+#   'fa18edcec56e4a87a5cbd9e04a2f3a09',
+#   '059ffc35578745c3b625011b0479a4fa',
+#   'a4f0ea2892094f4586a0e2c84f456d8e'
+# ]
+# val_tokens: [
+#   '30f3278766a040469851546a499aeddd',
+#   '350b563e0523486391eba9d010337e2d',
+#   '579c17cec3f94f0cbb84b8b95590841c',
+#   '94449679456646028efd31ec73c6ae47',
+#   '42563f19747741318b4983bbc61a47b1',
+#   'd5061556971945c2afc03dbfdc3bc1a6',
+#   '8464c748ca5f460dba24b50a233692e4',
+#   '0f4c0e7301424f2996d87a86902aafe9',
+#   'd9a8ad39503a411a8eb7501846d8dfc9',
+#   '47bac577996844c78919b53fa36cf1ed',
+#   'aeffd15cbe594a9a81b26d8bb8d15f3d',
+#   '2d3b48e3840244c7b681cb6e63e2c123'
+# ]
 
 
 
@@ -89,3 +140,78 @@ sample_tokens:
 map_extents: [-25.0, 1.0, 25.0, 50.0]
 # Spacing between adjacent grid cells in the map, in meters
 map_resolution: 0.25
+
+
+# Vertical extents of the region of interest, in meters
+ymin: -2
+ymax: 4
+
+# Approximate camera focal length used for constructing transformers
+focal_length: 630.
+
+# Number of intermediate channels in the transformer layer
+tfm_channels: 64
+
+# Number of output classes to predict
+num_class: 14
+
+# Topdown network options
+topdown:
+
+  # Number of feature channels at each layer of the topdown network
+  channels: 128
+
+  # Number of blocks in each layer
+  layers: [4, 4]
+
+  # Upsampling factor in each stage of the topdown network
+  strides: [1, 2]
+
+  # Type of residual block to use [ basic | bottleneck ]
+  blocktype: bottleneck
+
+# Whether to use Bayesian classifier
+bayesian: False
+
+# Class-specific weighting factors used to balance the cross entropy loss
+class_weights:
+  -    1.7    # drivable_area
+  -    5.9    # ped_crossing
+  -    3.3    # walkway
+  -    4.6    # carpark
+  -    8.0    # car
+  -   10.3    # truck
+  -   10.6    # bus
+  -    6.9    # trailer
+  -   11.8    # construction_vehicle
+  -   30.1    # pedestrian
+  -   33.6    # motorcycle
+  -   41.2    # bicycle
+  -   44.3    # traffic_cone
+  -   15.9    # barrier
+
+# Prior probability of a positive prediction, used to initialise classifier
+prior:
+  - 0.44679   # drivable_area
+  - 0.02407   # ped_crossing
+  - 0.14491   # walkway
+  - 0.02994   # carpark
+  - 0.02086   # car
+  - 0.00477   # truck
+  - 0.00156   # bus
+  - 0.00189   # trailer
+  - 0.00084   # construction_vehicle
+  - 0.00119   # pedestrian
+  - 0.00019   # motorcycle
+  - 0.00012   # bicycle
+  - 0.00031   # traffic_cone
+  - 0.00176   # barrier
+
+# Binary cross entropy loss weight
+xent_weight: 1.0
+
+# Max entropy uncertainty loss weight
+uncert_weight: 0.001
+
+# Method of weighting classes in loss function
+weight_mode: sqrt_inverse

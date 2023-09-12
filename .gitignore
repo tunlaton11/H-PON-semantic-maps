@@ -6,3 +6,4 @@ nuscenes/
 logs/
 runs/
 checkpoints/
+pred_img/
