@@ -4,9 +4,11 @@ numpy==1.24.2
 opencv_python==4.7.0.72
 Pillow==9.5.0
 pyquaternion==0.9.9
-Shapely==2.0.1
-torch==2.0.0+cu117
-torchmetrics==0.11.4
-torchvision==0.15.1+cu117
 tqdm==4.65.0
 yacs==0.1.8
+kornia==0.7.0
+tensorboard==2.14.0
+torchmetrics==1.0.3
+torchvision==0.15.2
+nuscenes-devkit==1.1.10
+Shapely==1.8.5
