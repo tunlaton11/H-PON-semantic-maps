@@ -9,6 +9,7 @@ This repo is a part of senior project titled "Translating Images into Maps for A
 ## Project setup
 ```
 conda create --name myenv python=3.9.0
+conda activate myenv
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 pip install --no-deps -r requirements.txt
 ```
