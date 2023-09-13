@@ -112,7 +112,6 @@ class TensorboardLogger:
             labels[-1],
             masks[-1],
             epoch,
-            "nuscenes",
             split="Validate",
         )
 
