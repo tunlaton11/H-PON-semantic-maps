@@ -82,7 +82,7 @@ class NuScenesDataset(Dataset):
         if sample_tokens is None:
             # Iterate over scenes
             for scene in self.nuscenes.scene:
-                # # Ignore scenes which don't belong to the current split
+                # Ignore scenes which don't belong to the current split
                 if scene_names is not None and scene["name"] not in scene_names:
                     continue
 

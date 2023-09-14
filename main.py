@@ -18,7 +18,7 @@ import utilities.torch as torch_utils
 def main():
     ## SET EXPERIMENT CONFIG ##
     config = load_config("configs/configs.yml")
-    experiment_title = f"Test_{config.network}_{config.nuscenes_version}_{time.time()}"
+    experiment_title = f"{config.network}_{config.nuscenes_version}_{time.time()}"
     is_load_checkpoint = False
     if is_load_checkpoint:
         # set experiment title and checkpoint path manuanlly here.
