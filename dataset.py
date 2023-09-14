@@ -123,8 +123,8 @@ class NuScenesDataset(Dataset):
         # Convert to torch tensor
         return (
             to_tensor(image),
-            torch.from_numpy(labels),
-            torch.from_numpy(mask),
+            torch.from_numpy(labels).bool(),
+            torch.from_numpy(mask).bool(),
             calib
         )
 
