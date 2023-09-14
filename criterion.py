@@ -63,7 +63,7 @@ def uncertainty_loss(x, mask):
 
 def prior_uncertainty_loss(x, mask, priors):
     priors = x.new(priors).view(1, -1, 1, 1).expand_as(x)
-    xent = F.binary_cross_entropy_with_logits(x, priors, reduce=False)
+    xent = F.binary_cross_entropy_with_logits(x, priors, reduction="none")
     return (xent * (~mask).float().unsqueeze(1)).mean()
 
 
