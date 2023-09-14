@@ -10,6 +10,8 @@ import time
 from configs.config_utilities import load_config
 from models.pyramid import build_pon, build_hpon
 from dataset import NuScenesDataset
+import nuscenes_splits
+
 from criterion import OccupancyCriterion
 from logger import TensorboardLogger
 import utilities.torch as torch_utils
@@ -56,7 +58,8 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
+        scene_names=nuscenes_splits.TRAIN_SCENES,
+        # sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
         transform=train_transform,
         image_transform=train_image_transform,
@@ -72,7 +75,8 @@ def main():
         nuscenes_dir=config.nuscenes_dir,
         nuscenes_version=config.nuscenes_version,
         label_dir=config.label_dir,
-        sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
+        scene_names=nuscenes_splits.VAL_SCENES,
+        # sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
         image_size=(200, 112),
     )
     validate_loader = DataLoader(
