@@ -85,7 +85,7 @@ class TensorboardLogger:
                 images = images.to(self.device)
                 logits = network(images, calibs).to(self.device)
 
-                # loss = self.criterion(predictions, labels.float()).to(self.device)
+                # loss = self.criterion(logits, labels.float()).to(self.device)
                 loss = self.criterion(logits, labels, masks).to(self.device)
 
 
@@ -193,7 +193,7 @@ def visualise(
         flatten_labels(pred.cpu()), "nipy_spectral", flatten=True
     )
 
-    mask = (mask.cpu() == -1).long()
+    mask = mask.cpu().int()
 
     gt_with_mask = colorised_flatten_gt * mask
     pred_with_mask = colorised_flatten_pred * mask
