@@ -301,19 +301,19 @@ def encode_binary_labels(masks):
     return (masks.astype(np.int32) * bits.reshape(-1, 1, 1)).sum(0)
 
 
-def decode_binary_labels_old(labels, nclass):
+def decode_binary_labels(labels, nclass):
     bits = torch.pow(2, torch.arange(nclass))
     return (labels & bits.view(-1, 1, 1)) > 0
 
 
-def decode_binary_labels(
-    encoded_labels: np.ndarray,
-    n_classes: int,
-) -> np.ndarray:
-    bits = 2 ** np.arange(n_classes, dtype=np.int32)
-    bits = bits.reshape(-1, 1, 1)
-    encoded_labels = encoded_labels.astype(np.int32)
-    return ((encoded_labels & bits) > 0).astype(int)
+# def decode_binary_labels(
+#     encoded_labels: np.ndarray,
+#     n_classes: int,
+# ) -> np.ndarray:
+#     bits = 2 ** np.arange(n_classes, dtype=np.int32)
+#     bits = bits.reshape(-1, 1, 1)
+#     encoded_labels = encoded_labels.astype(np.int32)
+#     return ((encoded_labels & bits) > 0).astype(int)
 
 
 def flatten_labels(

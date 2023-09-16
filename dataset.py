@@ -123,8 +123,8 @@ class NuScenesDataset(Dataset):
         # Convert to torch tensor
         return (
             to_tensor(image),
-            torch.from_numpy(labels).bool(),
-            torch.from_numpy(mask).bool(),
+            labels,
+            mask,
             calib
         )
 
@@ -142,7 +142,7 @@ class NuScenesDataset(Dataset):
     def load_labels(self, token: str):
         # Load label image
         label_path = os.path.join(self.label_dir, token + ".png")
-        encoded_labels = cv2.imread(label_path, cv2.IMREAD_UNCHANGED)
+        encoded_labels = to_tensor(cv2.imread(label_path, cv2.IMREAD_UNCHANGED).astype("int32"))
 
         # Decode to binary labels
         num_class = len(nusc_utils.NUSCENES_CLASS_NAMES)
