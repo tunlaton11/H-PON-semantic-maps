@@ -12,6 +12,15 @@ from nuscenes.utils.data_classes import LidarPointCloud
 from nuscenes.eval.detection.utils import category_to_detection_name
 
 
+CAMERA_NAMES = [
+    "CAM_FRONT",
+    "CAM_FRONT_LEFT",
+    "CAM_FRONT_RIGHT",
+    "CAM_BACK_LEFT",
+    "CAM_BACK_RIGHT",
+    "CAM_BACK",
+]
+
 NUSCENES_CLASS_NAMES = [
     "drivable_area",
     "ped_crossing",

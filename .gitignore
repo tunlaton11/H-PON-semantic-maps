@@ -6,6 +6,7 @@ labels/
 nuscenes/
 nuscenes_full_version/
 labels_full_version/
+labels_full_version_all/
 logs/
 runs/
 checkpoints/

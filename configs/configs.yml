@@ -1,6 +1,9 @@
-nuscenes_dir: nuscenes
-nuscenes_version: v1.0-mini
-label_dir: labels
+# nuscenes_dir: nuscenes
+# nuscenes_version: v1.0-mini
+# label_dir: labels
+nuscenes_dir: nuscenes_full_version
+nuscenes_version: v1.0-trainval
+label_dir: labels_full_version_all
 log_dir: runs
 checkpoint_dir: checkpoints
 num_epochs_to_save_checkpoint: 50 # Save checkpoint every n epochs
@@ -9,10 +12,10 @@ num_epochs_to_save_checkpoint: 50 # Save checkpoint every n epochs
 network: H-PON
 
 # Number of epochs
-epochs: 50
+epochs: 300
 
 # Number of examples per mini-batch
-batch_size: 10
+batch_size: 24
 
 # Number of dataloader threads
 num_workers: 2

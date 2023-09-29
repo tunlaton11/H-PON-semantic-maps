@@ -31,8 +31,10 @@ def process_sample(nuscenes, map_data, sample, config):
     lidar_transform = nusc_utils.get_sensor_transform(nuscenes, lidar_data)
     lidar_pcl = nusc_utils.transform(lidar_transform, lidar_pcl)
 
-    sample_data = nuscenes.get("sample_data", sample["data"]["CAM_FRONT"])
-    process_sample_data(nuscenes, map_data, sample_data, lidar_pcl, config)
+    # Iterate over sample data
+    for camera in nusc_utils.CAMERA_NAMES:
+        sample_data = nuscenes.get('sample_data', sample['data'][camera])
+        process_sample_data(nuscenes, map_data, sample_data, lidar_pcl, config)
 
 
 def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
@@ -89,7 +91,7 @@ def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
 
 if __name__ == "__main__":
 
-    config = load_config()
+    config = load_config("configs/configs.yml")
 
     dataroot = os.path.join(os.getcwd(), config.nuscenes_dir)
     nuscenes = NuScenes(config.nuscenes_version, dataroot)
