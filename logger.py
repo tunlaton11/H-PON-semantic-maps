@@ -85,13 +85,15 @@ class TensorboardLogger:
                 images = images.to(self.device)
                 logits = network(images, calibs).to(self.device)
 
-                # loss = self.criterion(logits, labels.float()).to(self.device)
-                loss = self.criterion(logits, labels, masks).to(self.device)
-
+                loss = self.criterion(logits, labels.float()).to(self.device)
+                # loss = self.criterion(logits, labels, masks).to(self.device)
+                
+                logits_masked = masks.unsqueeze(1).expand(-1, 14, -1, -1) * logits
+                labels_masked = masks.unsqueeze(1).expand(-1, 14, -1, -1) * labels
 
                 total_loss += loss.item()
-                iou = self.iou_metric(logits, labels)
-                iou_by_class = self.iou_metric_by_class(logits, labels)
+                iou = self.iou_metric(logits_masked, labels_masked)
+                iou_by_class = self.iou_metric_by_class(logits_masked, labels_masked)
                 total_iou += iou
                 total_iou_by_class += iou_by_class
                 num_step += 1
