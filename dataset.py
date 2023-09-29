@@ -24,6 +24,7 @@ class NuScenesDataset(Dataset):
         transform: A.Compose = None,
         image_transform: A.Compose = None,
         flatten_labels=False,
+        cam_front_only=False,
     ):
         """NuScenes Dataset.
 
@@ -53,9 +54,12 @@ class NuScenesDataset(Dataset):
             e.g. brightness, contrast, saturation. Do not include
             ToTensorV2 in transform as the dataset has its own torch
             tensor convert.
-        flatten_labels : bool, optional
+        flatten_labels : bool
             If true, labels are flatten to one channel instead of
             n_classes channels. Default: False.
+        cam_front_only : bool
+            If true, only data from front camera is loaded. 
+            Default: False
         """
         print("-" * 50)
         print(f"Loading NuScenes version {nuscenes_version} ...")
@@ -70,6 +74,7 @@ class NuScenesDataset(Dataset):
         self.transform = transform
         self.image_transform = image_transform
         self.flatten_labels = flatten_labels
+        self.cam_front_only = cam_front_only
         self.get_tokens(sample_tokens, scene_names)
 
     def get_tokens(
@@ -90,7 +95,12 @@ class NuScenesDataset(Dataset):
                 for sample in nusc_utils.iterate_samples(
                     self.nuscenes, scene["first_sample_token"]
                 ):
-                    self.tokens.append(sample["data"]["CAM_FRONT"])
+                    if self.cam_front_only:
+                        self.tokens.append(sample["data"]["CAM_FRONT"])
+                    else:
+                        # Iterate over cameras
+                        for camera in nusc_utils.CAMERA_NAMES:
+                            self.tokens.append(sample['data'][camera])
         else:
             self.tokens = sample_tokens
 
@@ -109,24 +119,17 @@ class NuScenesDataset(Dataset):
             labels = nusc_utils.flatten_labels(labels)
 
         if self.transform is not None:
-            augmentations = self.transform(
-                image=image,
-                labels=labels,
-            )
+            augmentations = self.transform(image=image, labels=labels, mask=mask)
             image = augmentations["image"]
             labels = augmentations["labels"]
+            mask = augmentations["labels"]
 
         if self.image_transform is not None:
             augmentations = self.image_transform(image=image)
             image = augmentations["image"]
 
         # Convert to torch tensor
-        return (
-            to_tensor(image),
-            labels,
-            mask,
-            calib
-        )
+        return (to_tensor(image), labels, mask, calib)
 
     def load_image(self, token: str):
         # Load image
@@ -142,7 +145,9 @@ class NuScenesDataset(Dataset):
     def load_labels(self, token: str):
         # Load label image
         label_path = os.path.join(self.label_dir, token + ".png")
-        encoded_labels = to_tensor(cv2.imread(label_path, cv2.IMREAD_UNCHANGED).astype("int32"))
+        encoded_labels = to_tensor(
+            cv2.imread(label_path, cv2.IMREAD_UNCHANGED).astype("int32")
+        )
 
         # Decode to binary labels
         num_class = len(nusc_utils.NUSCENES_CLASS_NAMES)
@@ -151,28 +156,15 @@ class NuScenesDataset(Dataset):
 
         return labels, mask
 
-    
     def load_calib(self, token):
-
         # Load camera intrinsics matrix
-        sample_data = self.nuscenes.get('sample_data', token)
+        sample_data = self.nuscenes.get("sample_data", token)
         sensor = self.nuscenes.get(
-            'calibrated_sensor', sample_data['calibrated_sensor_token'])
-        intrinsics = torch.tensor(sensor['camera_intrinsic'])
+            "calibrated_sensor", sample_data["calibrated_sensor_token"]
+        )
+        intrinsics = torch.tensor(sensor["camera_intrinsic"])
 
         # Scale calibration matrix to account for image downsampling
-        intrinsics[0] *= self.image_size[0] / sample_data['width']
-        intrinsics[1] *= self.image_size[1] / sample_data['height']
+        intrinsics[0] *= self.image_size[0] / sample_data["width"]
+        intrinsics[1] *= self.image_size[1] / sample_data["height"]
         return intrinsics
-
-
-if __name__ == "__main__":
-    dataset = NuScenesDataset(
-        nuscenes_dir="nuscenes",
-        nuscenes_version="v1.0-mini",
-        label_dir="labels",
-    )
-
-    image, labels, mask = dataset[0]
-    print(labels[0])
-    print(labels.shape)
