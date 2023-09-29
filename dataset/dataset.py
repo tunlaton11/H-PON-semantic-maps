@@ -1,6 +1,5 @@
 import os
 from typing import Iterable, Tuple
-import numpy as np
 import cv2
 from torch.utils.data import Dataset
 import torch
@@ -61,14 +60,11 @@ class NuScenesDataset(Dataset):
             If true, only data from front camera is loaded. 
             Default: False
         """
-        print("-" * 50)
-        print(f"Loading NuScenes version {nuscenes_version} ...")
         self.nuscenes = NuScenes(
             nuscenes_version,
             nuscenes_dir,
             verbose=False,
         )
-        print("-" * 50)
         self.label_dir = label_dir
         self.image_size = image_size
         self.transform = transform

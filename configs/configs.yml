@@ -20,6 +20,11 @@ batch_size: 24
 # Number of dataloader threads
 num_workers: 2
 
+img_size: [200, 112]
+
+# Whether to use horizontal flips for data augmentation
+hflip: True
+
 # Learning rate
 lr: 0.001
 
