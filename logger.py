@@ -11,7 +11,8 @@ from matplotlib.colors import ListedColormap
 import torchmetrics.classification
 import numpy as np
 import matplotlib.pyplot as plt
-from experiments.ipm.ipm_utilities import ipm_transform
+
+# from experiments.ipm.ipm_utilities import ipm_transform
 
 import torchvision.utils
 
@@ -24,10 +25,13 @@ class TensorboardLogger:
         validate_loader: DataLoader,
         criterion,  # Callable,
         num_classes: int,
+        loss: str,
         initial_step: int = 0,
+        min_loss: float = float("inf"),
     ):
         self.device = device
         self.writer = SummaryWriter(log_dir)
+        self.loss = loss
 
         self.training_step = initial_step
         self.training_loss = 0
@@ -45,7 +49,7 @@ class TensorboardLogger:
             average="none",
         ).to(device)
 
-        self.min_loss = float("inf")
+        self.min_loss = min_loss
         self.no_improve_consec_counter = 0
         self.save_model = False
 
@@ -85,9 +89,12 @@ class TensorboardLogger:
                 images = images.to(self.device)
                 logits = network(images, calibs).to(self.device)
 
-                loss = self.criterion(logits, labels.float()).to(self.device)
-                # loss = self.criterion(logits, labels, masks).to(self.device)
-                
+                # Compute loss
+                if self.loss == "occupancy":
+                    loss = self.criterion(logits, labels, masks).to(self.device)
+                elif self.loss == "bce":
+                    loss = self.criterion(logits, labels.float()).to(self.device)
+
                 logits_masked = masks.unsqueeze(1).expand(-1, 14, -1, -1) * logits
                 labels_masked = masks.unsqueeze(1).expand(-1, 14, -1, -1) * labels
 
@@ -106,7 +113,6 @@ class TensorboardLogger:
             self.not_improve_consec_counter += 1
             self.save_model = False
 
-        
         visualise(
             self.writer,
             images[-1],

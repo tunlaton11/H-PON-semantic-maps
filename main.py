@@ -1,161 +1,159 @@
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
-import albumentations as A
-import numpy as np
+import torch.nn as nn
 from tqdm import tqdm
-import os
-import time
+from datetime import datetime
+import argparse
 
 from configs.config_utilities import load_config
 from models.pyramid import build_pon, build_hpon
-from dataset import NuScenesDataset
-import nuscenes_splits
-
+from dataset import build_dataloaders
 from criterion import OccupancyCriterion
 from logger import TensorboardLogger
 import utilities.torch as torch_utils
 
 
-def main():
-    ## SET EXPERIMENT CONFIG ##
-    config = load_config("configs/configs.yml")
-    experiment_title = f"{config.network}_{config.nuscenes_version}_{time.time()}"
-    is_load_checkpoint = False
-    if is_load_checkpoint:
-        # set experiment title and checkpoint path manuanlly here.
-        experiment_title = "[network]_[nuscenes_version]_[unix_timestamp]"
-        load_checkpoint_epoch = 99  # epoch to load checkpoint
-        load_checkpoint_path = (
-            f"{config.checkpoint_dir}/{experiment_title}"
-            + f"/{experiment_title}_{str(epoch).zfill(load_checkpoint_epoch)}.pt"
+def create_experiment(
+    config,
+    args,
+):
+    if args.resume_experiment is not None:
+        log_dir = f"{config.log_dir}/{args.resume_experiment}"
+        print("Restoring experiment from: " + log_dir)
+        if args.tag is not None:
+            print(f"`--tag {args.tag}` is not used.")
+    else:
+        experiment = (
+            f"{args.network}_{config.nuscenes_version}_"
+            + datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         )
+        if args.tag is not None:
+            experiment = args.tag + experiment
+        log_dir = f"{config.log_dir}/{experiment}"
+        print("Creating new experiment at: " + log_dir)
+    return log_dir
 
-    train_transform = A.Compose(
-        [
-            A.HorizontalFlip(p=0.5),
-        ]
-    )
 
-    train_image_transform = A.Compose(
-        [
-            A.ColorJitter(
-                brightness=0.2,
-                contrast=0.2,
-                saturation=0.2,
-                hue=0.2,
-                p=0.25,
-            ),
-            A.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-                max_pixel_value=255.0,
-            ),
-        ]
+def main():
+    parser = argparse.ArgumentParser(
+        description="Training a model for bird's-eye-view map prediction."
     )
+    parser.add_argument(
+        "--network",
+        choices=["H-PON", "PON"],
+        default="H-PON",
+        help="network to train, default: `H-PON`",
+    )
+    parser.add_argument(
+        "--loss",
+        choices=["occupancy", "bce"],
+        default="occupancy",
+        help="""loss function, default: `occupancy`; 
+        `occupancy` - occupancy loss, `bce` - binary cross entropy loss""",
+    )
+    parser.add_argument(
+        "--tag",
+        help="tag included in experiment name (optional)",
+    )
+    parser.add_argument(
+        "--resume-experiment",
+        help="""name of experiment to load and resume training 
+        (must use with `--resume-epoch`), 
+        default format: [network]_[nuscenes_version]_[unix_timestamp]""",
+    )
+    parser.add_argument(
+        "--resume-epoch",
+        type=int,
+        help="""saved checkpoint epoch to load and resume training 
+        (must use with `--resume-experiment`)""",
+    )
+    parser.add_argument("--save-best", help="save best epoch", action="store_true")
+    args = parser.parse_args()
+    config = load_config("configs/configs.yml")
 
-    train_dataset = NuScenesDataset(
-        nuscenes_dir=config.nuscenes_dir,
-        nuscenes_version=config.nuscenes_version,
-        label_dir=config.label_dir,
-        scene_names=nuscenes_splits.TRAIN_SCENES,
-        # sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
-        image_size=(200, 112),
-        transform=train_transform,
-        image_transform=train_image_transform,
-    )
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=config.batch_size,
-        num_workers=config.num_workers,
-        pin_memory=True,
-        shuffle=True,
-    )
-    validate_dataset = NuScenesDataset(
-        nuscenes_dir=config.nuscenes_dir,
-        nuscenes_version=config.nuscenes_version,
-        label_dir=config.label_dir,
-        scene_names=nuscenes_splits.VAL_SCENES,
-        # sample_tokens=np.loadtxt("configs/mini_val_sample_tokens.csv", dtype=str),
-        image_size=(200, 112),
-    )
-    validate_loader = DataLoader(
-        validate_dataset,
-        batch_size=config.batch_size,
-        num_workers=config.num_workers,
-        pin_memory=True,
-        shuffle=True,
-    )
+    # Create directory for experiment
+    log_dir = create_experiment(config, args)
 
+    # Build dataset loader
+    train_loader, validate_loader = build_dataloaders(config)
+
+    # Detect device
     device = torch_utils.detect_device()
     print(f"Training on {device}")
 
-    if config.network == "H-PON":
+    # Build network
+    if args.network == "H-PON":
         network = build_hpon(config, htfm_method="stack").to(device)
-    elif config.network == "PON":
+    elif args.network == "PON":
         network = build_pon(config).to(device)
-    else:
-        raise "Only H-PON and PON options available for network"
 
-    # criterion = nn.BCEWithLogitsLoss().to(device)
-    criterion = OccupancyCriterion(
-        config.prior,
-        config.xent_weight,
-        config.uncert_weight,
-        config.weight_mode,
-    ).to(device)
-    num_classes = 14
+    # Build criterion
+    if args.loss == "occupancy":
+        criterion = OccupancyCriterion(
+            config.prior,
+            config.xent_weight,
+            config.uncert_weight,
+            config.weight_mode,
+        ).to(device)
+    elif args.loss == "bce":
+        criterion = nn.BCEWithLogitsLoss().to(device)
 
+    # Build optimizer
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
 
-    log_dir = f"{config.log_dir}/{experiment_title}"
-    num_epochs = config.epochs
-    if is_load_checkpoint:
+    # Load checkpoint
+    if args.resume_experiment is not None:
+        load_checkpoint_path = f"{log_dir}/saved_{str(args.resume_epoch).zfill(4)}.pt"
         print(f"Loading checkpoint from {load_checkpoint_path}")
         checkpoint = torch.load(load_checkpoint_path)
         network.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         initial_step = checkpoint["step"]
         initial_epoch = checkpoint["epoch"] + 1
+        min_loss = checkpoint["min_loss"]
     else:
         initial_step = 0
         initial_epoch = 0
+        min_loss = float("inf")
 
     logger = TensorboardLogger(
         device=device,
         log_dir=log_dir,
         validate_loader=validate_loader,
         criterion=criterion,
-        num_classes=num_classes,
+        loss=args.loss,
+        num_classes=config.num_class,
         initial_step=initial_step,
+        min_loss=min_loss,
     )
 
-    if not is_load_checkpoint:
+    # Log experiment config in case of creating new experiment
+    if args.resume_experiment is None:
         config_log_table = f"""
             <table>
                 <tr>
                     <th>Nuscenes Version</th>
-                    <th>Is augmentation</th>
                     <th>Batch Size</th>
                     <th>Num Workers</th>
                     <th>Learning Rate</th>
                     <th>Number of epochs</th>
                     <th>Device</th>
-                    <th>Loss function</th>
-                    <th>Optimizer</th>
                     <th>Network</th>
+                    <th>Loss</th>
+                    <th>Optimizer</th>
+                    <th>Augmented: hflip</th>
                 </tr>
                 <tr>
                     <td>{config.nuscenes_version}</td>
-                    <td>{train_dataset.image_transform is not None}</td>
                     <td>{config.batch_size}</td>
                     <td>{config.num_workers}</td>
                     <td>{config.lr}</td>
                     <td>{config.epochs}</td>
                     <td>{device}</td>
-                    <td>{criterion.__class__.__name__}</td>
+                    <td>{args.network}</td>
+                    <td>{args.loss}</td>
                     <td>{optimizer.__class__.__name__}</td>
-                    <td>{network.__class__.__name__}</td>
+                    <td>{config.hflip}</td>
                 </tr>
             </table>
         """
@@ -163,7 +161,7 @@ def main():
             "Experiment Configurations", config_log_table, global_step=0
         )
 
-    for epoch in tqdm(range(initial_epoch, num_epochs)):
+    for epoch in tqdm(range(initial_epoch, config.epochs)):
         for batch in train_loader:
             images, labels, masks, calibs = batch
             images = images.to(device)
@@ -173,59 +171,64 @@ def main():
 
             logits = network(images, calibs)
 
-            # compute loss
-            # loss = criterion(predictions, labels.float()).to(device)
-            loss = criterion(logits, labels, masks).to(device)
+            # Compute loss
+            if args.loss == "occupancy":
+                loss = criterion(logits, labels, masks).to(device)
+            elif args.loss == "bce":
+                loss = criterion(logits, labels.float()).to(device)
 
-            # compute gradient
+            # Compute gradient
             optimizer.zero_grad()
             loss.backward()
 
-            # update weights
+            # Update weights
             optimizer.step()
 
             logger.log_step(loss=loss.item())
 
         logger.log_epoch(network, epoch)
 
-        # save checkpoint every n epochs
-        if (
-            epoch % config.num_epochs_to_save_checkpoint
-            == config.num_epochs_to_save_checkpoint - 1
-        ):
+        # Save checkpoint every n epochs
+        if (epoch + 1) % config.num_epochs_to_save_checkpoint == 0:
             print(f"Saving model at epoch {epoch}")
-            checkpoint_dir = f"{config.checkpoint_dir}/{experiment_title}"
-            os.makedirs(checkpoint_dir, exist_ok=True)
-            checkpoint_path = (
-                checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
-            )
+            checkpoint_path = log_dir + f"/saved_{str(epoch).zfill(4)}.pt"
             torch.save(
                 dict(
                     epoch=epoch,
                     step=logger.training_step,
                     model_state_dict=network.state_dict(),
                     optimizer_state_dict=optimizer.state_dict(),
+                    min_loss=logger.min_loss,
                 ),
                 checkpoint_path,
             )
 
-    # save last epoch
-    if (
-        epoch % config.num_epochs_to_save_checkpoint
-        != config.num_epochs_to_save_checkpoint - 1
-    ):
+        # Save best epoch
+        if args.save_best and logger.save_model:
+            print(f"Saving best model at epoch {epoch}")
+            checkpoint_path = log_dir + f"/saved_best.pt"
+            torch.save(
+                dict(
+                    epoch=epoch,
+                    step=logger.training_step,
+                    model_state_dict=network.state_dict(),
+                    optimizer_state_dict=optimizer.state_dict(),
+                    min_loss=logger.min_loss,
+                ),
+                checkpoint_path,
+            )
+
+    # Save last epoch
+    if (epoch + 1) % config.num_epochs_to_save_checkpoint != 0:
         print(f"Saving model at epoch {epoch}")
-        checkpoint_dir = f"{config.checkpoint_dir}/{experiment_title}"
-        os.makedirs(checkpoint_dir, exist_ok=True)
-        checkpoint_path = (
-            checkpoint_dir + f"/{experiment_title}_{str(epoch).zfill(5)}.pt"
-        )
+        checkpoint_path = log_dir + f"/saved_{str(epoch).zfill(4)}.pt"
         torch.save(
             dict(
                 epoch=epoch,
                 step=logger.training_step,
                 model_state_dict=network.state_dict(),
                 optimizer_state_dict=optimizer.state_dict(),
+                min_loss=logger.min_loss,
             ),
             checkpoint_path,
         )
