@@ -24,7 +24,7 @@ def create_experiment(
             print(f"`--tag {args.tag}` is not used.")
     else:
         experiment = (
-            f"{args.network}_{config.nuscenes_version}_"
+            f"{args.network}_{args.loss}_{config.nuscenes_version}_"
             + datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         )
         if args.tag is not None:
@@ -59,7 +59,7 @@ def main():
         "--resume-experiment",
         help="""name of experiment to load and resume training 
         (must use with `--resume-epoch`), 
-        default format: [network]_[nuscenes_version]_[datetime]""",
+        default format: [network]_[loss]_[nuscenes_version]_[datetime]""",
     )
     parser.add_argument(
         "--resume-epoch",
