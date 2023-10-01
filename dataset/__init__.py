@@ -2,18 +2,11 @@ from torch.utils.data import DataLoader
 import albumentations as A
 from .dataset import NuScenesDataset
 from . import nuscenes_splits
+# import numpy as np
 
 
 def build_dataloaders(config) -> tuple[DataLoader, DataLoader]:
     """Build train and val dataloaders for NuScenes dataset"""
-    if config.hflip:
-        train_transform = A.Compose(
-            [
-                A.HorizontalFlip(p=0.5),
-            ]
-        )
-    else:
-        train_transform = None
 
     print(f"Loading train dataset of NuScenes version {config.nuscenes_version}...")
     train_dataset = NuScenesDataset(
@@ -23,7 +16,7 @@ def build_dataloaders(config) -> tuple[DataLoader, DataLoader]:
         scene_names=nuscenes_splits.TRAIN_SCENES,
         # sample_tokens=np.loadtxt("configs/mini_train_sample_tokens.csv", dtype=str),
         image_size=config.img_size,
-        transform=train_transform,
+        hflip=config.hflip,
     )
     train_loader = DataLoader(
         train_dataset,

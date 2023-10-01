@@ -4,6 +4,7 @@ import cv2
 from torch.utils.data import Dataset
 import torch
 from torchvision.transforms.functional import to_tensor
+import torchvision.transforms as T
 import albumentations as A
 
 
@@ -20,10 +21,9 @@ class NuScenesDataset(Dataset):
         sample_tokens: Iterable[str] = None,
         scene_names: Iterable[str] = None,
         image_size: Tuple[int, int] = None,
-        transform: A.Compose = None,
+        hflip: bool = False,
         image_transform: A.Compose = None,
         flatten_labels=False,
-        cam_front_only=False,
     ):
         """NuScenes Dataset.
 
@@ -44,10 +44,9 @@ class NuScenesDataset(Dataset):
             includes all scenes.
         image_size : (width, height), optional
             Size of image.
-        transform : A.Compose, optional
-            Albumentations Compose Transform for image, label, and mask.
-            e.g. horizontal flip. Do not include ToTensorV2 in transform
-            as the dataset has its own torch tensor convert.
+        hflip : bool
+            Random Horizontal Flip (p=0.5) for image, label, and mask.
+            Default: False.
         image_transform : A.Compose, optional
             Albumentations Compose Transform for image.
             e.g. brightness, contrast, saturation. Do not include
@@ -56,9 +55,6 @@ class NuScenesDataset(Dataset):
         flatten_labels : bool
             If true, labels are flatten to one channel instead of
             n_classes channels. Default: False.
-        cam_front_only : bool
-            If true, only data from front camera is loaded. 
-            Default: False
         """
         self.nuscenes = NuScenes(
             nuscenes_version,
@@ -67,10 +63,9 @@ class NuScenesDataset(Dataset):
         )
         self.label_dir = label_dir
         self.image_size = image_size
-        self.transform = transform
+        self.hflip = hflip
         self.image_transform = image_transform
         self.flatten_labels = flatten_labels
-        self.cam_front_only = cam_front_only
         self.get_tokens(sample_tokens, scene_names)
 
     def get_tokens(
@@ -91,12 +86,9 @@ class NuScenesDataset(Dataset):
                 for sample in nusc_utils.iterate_samples(
                     self.nuscenes, scene["first_sample_token"]
                 ):
-                    if self.cam_front_only:
-                        self.tokens.append(sample["data"]["CAM_FRONT"])
-                    else:
-                        # Iterate over cameras
-                        for camera in nusc_utils.CAMERA_NAMES:
-                            self.tokens.append(sample['data'][camera])
+                    # Iterate over cameras
+                    for camera in nusc_utils.CAMERA_NAMES:
+                        self.tokens.append(sample["data"][camera])
         else:
             self.tokens = sample_tokens
 
@@ -114,18 +106,18 @@ class NuScenesDataset(Dataset):
         if self.flatten_labels:
             labels = nusc_utils.flatten_labels(labels)
 
-        if self.transform is not None:
-            augmentations = self.transform(image=image, labels=labels, mask=mask)
-            image = augmentations["image"]
-            labels = augmentations["labels"]
-            mask = augmentations["labels"]
-
         if self.image_transform is not None:
             augmentations = self.image_transform(image=image)
             image = augmentations["image"]
+        image = to_tensor(image)
 
-        # Convert to torch tensor
-        return (to_tensor(image), labels, mask, calib)
+        if self.hflip:
+            hflip_transform = T.RandomHorizontalFlip(p=0.5)
+            image = hflip_transform(image)
+            labels = hflip_transform(labels)
+            mask = hflip_transform(mask)
+
+        return image, labels, mask, calib
 
     def load_image(self, token: str):
         # Load image
