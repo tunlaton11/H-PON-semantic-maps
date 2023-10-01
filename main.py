@@ -59,7 +59,7 @@ def main():
         "--resume-experiment",
         help="""name of experiment to load and resume training 
         (must use with `--resume-epoch`), 
-        default format: [network]_[nuscenes_version]_[unix_timestamp]""",
+        default format: [network]_[nuscenes_version]_[datetime]""",
     )
     parser.add_argument(
         "--resume-epoch",
