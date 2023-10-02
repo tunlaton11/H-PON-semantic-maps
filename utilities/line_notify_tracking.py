@@ -47,7 +47,7 @@ Loss: {self.loss}
 Optimizer: {self.optimizer}
 Learning Rate: {self.lr}
 Total Epochs: {self.total_epoch}
-Training progess: {round(self.current_epoch*100 / self.total_epoch)}% 
+Training progess: {round((self.current_epoch+1)*100 / (self.total_epoch))}% 
 ({self.current_epoch} from {self.total_epoch-1})
         """
 

@@ -163,48 +163,48 @@ def main():
         )
 
     for epoch in tqdm(range(initial_epoch, config.epochs)):
-        for batch in train_loader:
-            images, labels, masks, calibs = batch
-            images = images.to(device)
-            labels = labels.to(device)
-            masks = masks.to(device)
-            calibs = calibs.to(device)
+        # define line notify
+        line_notify = Send_notify_to_line(
+            exp_name=log_dir,
+            model=args.network,
+            batch_size=config.batch_size,
+            loss=args.loss,
+            optimizer=optimizer.__class__.__name__,
+            lr=config.lr,
+            total_epoch=config.epochs,
+            current_epoch=epoch
+        )
+        try:
+            for batch in train_loader:
+                images, labels, masks, calibs = batch
+                images = images.to(device)
+                labels = labels.to(device)
+                masks = masks.to(device)
+                calibs = calibs.to(device)
 
-            # define line notify
-            line_notify = Send_notify_to_line(
-                exp_name=log_dir,
-                model=args.network,
-                batch_size=config.batch_size,
-                loss=args.loss,
-                optimizer=optimizer.__class__.__name__,
-                lr=config.lr,
-                total_epoch=config.epochs,
-                current_epoch=epoch
-            )
-
-            try:
                 logits = network(images, calibs)
-                line_notify.send_message()
-            except Exception as e:
-                error_message = f"An error occurred: {e}\n"
-                line_notify.send_error(error_message)
 
-            # Compute loss
-            if args.loss == "occupancy":
-                loss = criterion(logits, labels, masks).to(device)
-            elif args.loss == "bce":
-                loss = criterion(logits, labels.float()).to(device)
+                # Compute loss
+                if args.loss == "occupancy":
+                    loss = criterion(logits, labels, masks).to(device)
+                elif args.loss == "bce":
+                    loss = criterion(logits, labels.float()).to(device)
 
-            # Compute gradient
-            optimizer.zero_grad()
-            loss.backward()
+                # Compute gradient
+                optimizer.zero_grad()
+                loss.backward()
 
-            # Update weights
-            optimizer.step()
+                # Update weights
+                optimizer.step()
 
-            logger.log_step(loss=loss.item())
+                logger.log_step(loss=loss.item())
+            logger.log_epoch(network, epoch)
 
-        logger.log_epoch(network, epoch)
+            line_notify.send_message()
+        except Exception as e:
+            error_message = f"An error occurred: {e}\n"
+            line_notify.send_error(error_message)
+            raise e
 
         # Save checkpoint every n epochs
         if (epoch + 1) % config.num_epochs_to_save_checkpoint == 0:
