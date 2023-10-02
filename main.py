@@ -11,6 +11,7 @@ from dataset import build_dataloaders
 from criterion import OccupancyCriterion
 from logger import TensorboardLogger
 import utilities.torch as torch_utils
+from utilities.line_notify_tracking import Send_notify_to_line
 
 
 def create_experiment(
@@ -169,7 +170,24 @@ def main():
             masks = masks.to(device)
             calibs = calibs.to(device)
 
-            logits = network(images, calibs)
+            # define line notify
+            line_notify = Send_notify_to_line(
+                exp_name=log_dir,
+                model=args.network,
+                batch_size=config.batch_size,
+                loss=args.loss,
+                optimizer=optimizer.__class__.__name__,
+                lr=config.lr,
+                total_epoch=config.epochs,
+                current_epoch=epoch
+            )
+
+            try:
+                logits = network(images, calibs)
+                line_notify.send_message()
+            except Exception as e:
+                error_message = f"An error occurred: {e}\n"
+                line_notify.send_error(error_message)
 
             # Compute loss
             if args.loss == "occupancy":
