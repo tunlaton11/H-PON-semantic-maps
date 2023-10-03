@@ -17,7 +17,7 @@ from utilities.line_notify_tracking import Send_notify_to_line
 def create_experiment(
     config,
     args,
-):
+) -> str:
     if args.resume_experiment is not None:
         log_dir = f"{config.log_dir}/{args.resume_experiment}"
         print("Restoring experiment from: " + log_dir)
@@ -29,7 +29,7 @@ def create_experiment(
             + datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         )
         if args.tag is not None:
-            experiment = args.tag + experiment
+            experiment = args.tag + "_" + experiment
         log_dir = f"{config.log_dir}/{experiment}"
         print("Creating new experiment at: " + log_dir)
     return log_dir
@@ -54,7 +54,7 @@ def main():
     )
     parser.add_argument(
         "--tag",
-        help="tag included in experiment name (optional)",
+        help="tag included in front of experiment name (optional)",
     )
     parser.add_argument(
         "--resume-experiment",
@@ -172,7 +172,7 @@ def main():
             optimizer=optimizer.__class__.__name__,
             lr=config.lr,
             total_epoch=config.epochs,
-            current_epoch=epoch
+            current_epoch=epoch,
         )
         try:
             for batch in train_loader:
