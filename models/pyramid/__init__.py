@@ -44,7 +44,7 @@ def build_pon(config):
         classifier = BayesianClassifier(topdown.out_channels, config.num_class)
     else:
         classifier = LinearClassifier(topdown.out_channels, config.num_class)
-    # classifier.initialise(config.prior)
+    classifier.initialise(config.prior)
 
     # Assemble Pyramid Occupancy Network
     return PyramidOccupancyNetwork(
@@ -111,7 +111,7 @@ def build_hpon(
         classifier = BayesianClassifier(topdown.out_channels, config.num_class)
     else:
         classifier = LinearClassifier(topdown.out_channels, config.num_class)
-    # classifier.initialise(config.prior)
+    classifier.initialise(config.prior)
 
     # Assemble Pyramid Occupancy Network
     return HorizontallyAwarePyramidOccupancyNetwork(
