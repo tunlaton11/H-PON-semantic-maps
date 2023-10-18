@@ -3,9 +3,10 @@ import albumentations as A
 from .dataset import NuScenesDataset
 from . import nuscenes_splits
 # import numpy as np
+from typing import Tuple
 
 
-def build_dataloaders(config) -> tuple[DataLoader, DataLoader]:
+def build_dataloaders(config) -> Tuple[DataLoader, DataLoader]:
     """Build train and val dataloaders for NuScenes dataset"""
 
     print(f"Loading train dataset of NuScenes version {config.nuscenes_version}...")
