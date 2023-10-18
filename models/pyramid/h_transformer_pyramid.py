@@ -12,11 +12,13 @@ class HorizontalTransformerPyramid(nn.Module):
         self,
         in_channels,
         out_channels,
+        htfm_out_channels,
         resolution,
         extents,
         ymin,
         ymax,
         focal_length,
+        img_width,
         method: Literal["collage", "stack"],
     ):
         super().__init__()
@@ -25,22 +27,26 @@ class HorizontalTransformerPyramid(nn.Module):
 
         self.method = method
         if self.method == "stack":
-            self.final_conv = nn.Conv2d(out_channels * 5, out_channels, kernel_size=1)
+            self.final_conv = nn.Conv2d(htfm_out_channels * 5, out_channels, kernel_size=1)
 
         for i in range(5):
             # Scaled focal length and extents for each transformer
-            focal = focal_length / pow(2, i + 3)
-            xmin = extents[0] / pow(2, i + 3)
-            zmin = extents[1] / pow(2, i + 3)
-            xmax = extents[2] / pow(2, i + 3)
-            zmax = extents[3] / pow(2, i + 3)
+            scale_factor = pow(2, i + 3)
+            focal = focal_length / scale_factor
+            xmin = extents[0] / scale_factor
+            zmin = extents[1] / scale_factor
+            xmax = extents[2] / scale_factor
+            zmax = extents[3] / scale_factor
 
             subset_extents = [xmin, zmin, xmax, zmax]
+
+            self.in_width = math.ceil(img_width/scale_factor)
 
             # Build transformers
             dense_tfm = HorizontalDenseTransformer(
                 in_channels=in_channels,
-                out_channels=out_channels,
+                out_channels=htfm_out_channels,
+                in_width=self.in_width,
                 resolution=resolution,
                 grid_extents=subset_extents,
                 xmin=extents[0],
@@ -61,15 +67,6 @@ class HorizontalTransformerPyramid(nn.Module):
             scale = 8 * 2**i
             calib_downsamp = calib.clone()
             calib_downsamp[:, :2] = calib[:, :2] / scale
-
-            # B, C, H, W = fmap.shape
-            # in_width = self.h_dense_tfms[i].in_width
-            # fmap = fmap.detach().resize_(B, C, H, in_width)
-
-            # Resize fmap
-            fmap = F.interpolate(
-                fmap, size=(fmap.shape[2], self.h_dense_tfms[i].in_width)
-            )
 
             # Apply orthographic transformation to each feature map separately
             h_bev_feats.append(self.h_dense_tfms[i](fmap, calib_downsamp))

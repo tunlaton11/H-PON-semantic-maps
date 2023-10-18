@@ -8,18 +8,18 @@ log_dir: runs
 num_epochs_to_save_checkpoint: 50 # Save checkpoint every n epochs
 
 # Number of epochs
-epochs: 300
+epochs: 200
 
 # Number of examples per mini-batch
 batch_size: 24
 
 # Number of dataloader threads
-num_workers: 2
+num_workers: 8
 
 img_size: [200, 112]
 
 # Whether to use horizontal flips for data augmentation
-hflip: True
+hflip: False
 
 # Learning rate
 lr: 0.001
@@ -40,6 +40,9 @@ focal_length: 630.
 
 # Number of intermediate channels in the transformer layer
 tfm_channels: 64
+
+# Number of channels in horizontal dense transformer 
+htfm_channels: 16
 
 # Number of output classes to predict
 num_class: 14

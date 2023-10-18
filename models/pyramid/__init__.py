@@ -89,11 +89,13 @@ def build_hpon(
         h_transformer = HorizontalTransformerPyramid(
             256,
             config.tfm_channels,
+            config.htfm_channels,
             tfm_resolution,
             config.map_extents,
             config.ymin,
             config.ymax,
             config.focal_length,
+            config.img_size[0],
             htfm_method,
         )
 

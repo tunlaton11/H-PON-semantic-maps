@@ -11,6 +11,7 @@ class HorizontalDenseTransformer(nn.Module):
         self,
         in_channels,
         out_channels,
+        in_width,
         resolution,
         grid_extents,
         xmin,
@@ -34,15 +35,16 @@ class HorizontalDenseTransformer(nn.Module):
         # Compute input width based on region of image covered by grid
         self.zmin, self.zmax = grid_extents[1], grid_extents[3]
         self.xmin, self.xmax = grid_extents[0], grid_extents[2]
-        self.in_width = math.ceil(focal_length * (xmax - xmin) / zmax * resolution)
-
+        self.in_width = in_width
+        
         # Compute number of output cells required
         self.out_depth = math.ceil((zmax - zmin) / resolution)
+        self.out_width = math.ceil((xmax - xmin) / resolution)  # ***
 
         # Dense layer which maps UV features to UZ
         self.fc = nn.Conv1d(
             out_channels * self.in_width,
-            out_channels * self.out_depth,
+            out_channels * self.out_width,
             1,
             groups=groups,
         )
