@@ -68,6 +68,10 @@ def main():
         help="""saved checkpoint epoch to load and resume training 
         (must use with `--resume-experiment`)""",
     )
+    parser.add_argument(
+        "--line-notify",
+        help="A Line nofity token for experiment tracking in Line application",
+    )
     parser.add_argument("--save-best", help="save best epoch", action="store_true")
     args = parser.parse_args()
     config = load_config("configs/configs.yml")
@@ -101,6 +105,19 @@ def main():
 
     # Build optimizer
     optimizer = optim.Adam(network.parameters(), lr=config.lr)
+
+    # Define Line notify module
+    if args.line_notify is not None:
+        line_notify = Send_notify_to_line(
+            line_token=args.line_notify,
+            exp_name=log_dir,
+            model=args.network,
+            batch_size=config.batch_size,
+            loss=args.loss,
+            optimizer=optimizer.__class__.__name__,
+            lr=config.lr,
+            total_epoch=config.epochs,
+        )
 
     # Load checkpoint
     if args.resume_experiment is not None:
@@ -163,17 +180,6 @@ def main():
         )
 
     for epoch in tqdm(range(initial_epoch, config.epochs)):
-        # define line notify
-        line_notify = Send_notify_to_line(
-            exp_name=log_dir,
-            model=args.network,
-            batch_size=config.batch_size,
-            loss=args.loss,
-            optimizer=optimizer.__class__.__name__,
-            lr=config.lr,
-            total_epoch=config.epochs,
-            current_epoch=epoch,
-        )
         try:
             for batch in train_loader:
                 images, labels, masks, calibs = batch
@@ -200,10 +206,9 @@ def main():
                 logger.log_step(loss=loss.item())
             logger.log_epoch(network, epoch)
 
-            line_notify.send_message()
+            line_notify.send_message(current_epoch=epoch)
         except Exception as e:
-            error_message = f"An error occurred: {e}\n"
-            line_notify.send_error(error_message)
+            line_notify.send_error(error_message=e)
             raise e
 
         # Save checkpoint every n epochs
