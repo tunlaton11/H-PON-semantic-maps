@@ -206,9 +206,11 @@ def main():
                 logger.log_step(loss=loss.item())
             logger.log_epoch(network, epoch)
 
-            line_notify.send_message(current_epoch=epoch)
+            if args.line_notify is not None:
+                line_notify.send_message(current_epoch=epoch)
         except Exception as e:
-            line_notify.send_error(error_message=e)
+            if args.line_notify is not None:
+                line_notify.send_error(error_message=e)
             raise e
 
         # Save checkpoint every n epochs
