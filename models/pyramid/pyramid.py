@@ -57,3 +57,39 @@ class HorizontallyAwarePyramidOccupancyNetwork(nn.Module):
         # Predict individual class log-probabilities
         logits = self.classifier(td_feats)
         return logits
+
+
+class HorizontallyAwarePyramidOccupancyNetworkV2(nn.Module):
+    """Horizontally-aware Pyramid Occupancy Network - the original
+    Pyramid Occupancy Network is extended with a new component called
+    horizontal transformer pyramid and additional topdown.
+    """
+
+    def __init__(
+        self, frontend, v_transformer, h_transformer, v_topdown, h_topdown, classifier
+    ):
+        super().__init__()
+
+        self.frontend = frontend
+        self.v_transformer = v_transformer
+        self.h_transformer = h_transformer
+        self.v_topdown = v_topdown
+        self.h_topdown = h_topdown
+        self.classifier = classifier
+
+    def forward(self, image, calib, *args):
+        # Extract multiscale feature maps
+        feature_maps = self.frontend(image)
+
+        # Transform image features to birds-eye-view
+        v_bev_feats = self.v_transformer(feature_maps, calib)
+        h_bev_feats = self.h_transformer(feature_maps, calib)
+
+        # Apply topdown network
+        v_td_feats = self.topdown(v_bev_feats)
+        h_td_feats = self.topdown(h_bev_feats)
+        td_feats = torch.cat([v_td_feats, h_td_feats], dim=1)  # stack both td feats
+
+        # Predict individual class log-probabilities
+        logits = self.classifier(td_feats)
+        return logits

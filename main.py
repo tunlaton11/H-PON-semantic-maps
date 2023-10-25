@@ -6,7 +6,7 @@ from datetime import datetime
 import argparse
 
 from configs.config_utilities import load_config
-from models.pyramid import build_pon, build_hpon
+from models.pyramid import build_pon, build_hpon, build_hponv2
 from dataset import build_dataloaders
 from criterion import OccupancyCriterion
 from logger import TensorboardLogger
@@ -41,7 +41,7 @@ def main():
     )
     parser.add_argument(
         "--network",
-        choices=["H-PON", "PON"],
+        choices=["H-PON", "H-PONv2", "PON"],
         default="H-PON",
         help="network to train, default: `H-PON`",
     )
@@ -89,6 +89,8 @@ def main():
     # Build network
     if args.network == "H-PON":
         network = build_hpon(config, htfm_method="stack").to(device)
+    elif args.network == "H-PONv2":
+        network = build_hponv2(config, htfm_method="stack").to(device)
     elif args.network == "PON":
         network = build_pon(config).to(device)
 
